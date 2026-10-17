@@ -7,7 +7,7 @@
 Escanea un QR y usa avance de diapositivas, puntero láser, lápiz, mouse remoto y teclado.</p>
 <p align="center"><sub>Creado por <b>Miguel Mogrovejo</b> · v1.1.0 · antes llamado «Mando»</sub></p>
 <p align="center"><a href="https://presentazo.com/"><b>presentazo.com</b></a></p>
-<p align="center"><a href="https://www.facebook.com/presentazo/">Facebook</a> · <a href="https://www.instagram.com/presentazo/">Instagram</a> · <a href="https://www.tiktok.com/@presentazo">TikTok</a> · <a href="https://www.youtube.com/@presentazo">YouTube</a> · <a href="https://x.com/presentazo">X</a></p>
+<p align="center"><a href="https://www.facebook.com/presentazo/">Facebook</a> · <a href="https://www.instagram.com/presentazo/">Instagram</a> · <a href="https://www.tiktok.com/@presentazo">TikTok</a> · <a href="https://www.youtube.com/@presentazo">YouTube</a> · <a href="https://x.com/presentazo">X</a> · <a href="https://www.linkedin.com/company/presentazo/">LinkedIn</a></p>
 
 ---
 
@@ -225,6 +225,7 @@ Visita nuestra página web y síguenos en nuestras redes oficiales:
 - **TikTok:** <https://www.tiktok.com/@presentazo>
 - **YouTube:** <https://www.youtube.com/@presentazo>
 - **X:** <https://x.com/presentazo>
+- **LinkedIn:** <https://www.linkedin.com/company/presentazo/>
 
 ## Licencia
 
