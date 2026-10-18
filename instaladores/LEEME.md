@@ -10,9 +10,9 @@ Cada sistema tiene dos versiones: **instalador** (la app se instala como cualqui
 
 | Computadora | Instalador | Portable |
 |---|---|---|
-| Windows 10 u 11 | `windows/instalador/Presentazo-1.0.0-Windows-Instalador.exe` | `windows/portable/Presentazo-1.0.0-Windows-Portable.exe` |
-| Mac con procesador Intel | `mac-intel/instalador/Presentazo-1.0.0-Mac-Intel.dmg` | `mac-intel/portable/Presentazo-1.0.0-Mac-Intel.zip` |
-| Mac con chip M (M1, M2, M3, M4…) | `mac-chip-m/instalador/Presentazo-1.0.0-Mac-Chip-M.dmg` | `mac-chip-m/portable/Presentazo-1.0.0-Mac-Chip-M.zip` |
+| Windows 10 u 11 | `windows/instalador/Presentazo-1.0.1-Windows-Instalador.exe` | `windows/portable/Presentazo-1.0.1-Windows-Portable.exe` |
+| Mac con procesador Intel | `mac-intel/instalador/Presentazo-1.0.1-Mac-Intel.dmg` | `mac-intel/portable/Presentazo-1.0.1-Mac-Intel.zip` |
+| Mac con chip M (M1, M2, M3, M4…) | `mac-chip-m/instalador/Presentazo-1.0.1-Mac-Chip-M.dmg` | `mac-chip-m/portable/Presentazo-1.0.1-Mac-Chip-M.zip` |
 
 Para saber qué Mac tienes, abre el menú Apple › Acerca de esta Mac. Si dice "Chip Apple M…", usa la versión de chip M. Si dice "Procesador Intel", la de Intel.
 
