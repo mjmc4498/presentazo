@@ -11,7 +11,7 @@ Todo lo que pide el [Panel del desarrollador](https://chrome.google.com/webstore
 | Campo | Valor |
 |---|---|
 | Primera publicación (en revisión) | `dist/mando-1.0.0.zip` · versión 1.0.0, con el nombre «Mando» |
-| Actualización lista para subir | `dist/mando-1.1.0.zip` · versión 1.1.0 (ver `CHANGELOG.md`) |
+| Actualización lista para subir | `dist/presentazo-1.1.0.zip` · versión 1.1.0 (ver `CHANGELOG.md`) |
 | Autor | Miguel Mogrovejo |
 
 ---
@@ -115,10 +115,10 @@ Creado por Miguel Mogrovejo.
 | Campo | Valor |
 |---|---|
 | Sitio web oficial | `https://presentazo.com/` |
-| URL de asistencia | `https://github.com/mjmc4498/mando/issues` |
-| Política de privacidad | `https://mjmc4498.github.io/mando/privacy.html` |
+| URL de asistencia | `https://github.com/mjmc4498/presentazo/issues` |
+| Política de privacidad | `https://mjmc4498.github.io/presentazo/privacy.html` |
 
-> Las tres direcciones ya están publicadas. La asistencia y la privacidad conservan «mando» para que la versión 1.0.0 siga funcionando.
+> Las tres direcciones ya están publicadas. Las anteriores, con «mando», redirigen a las nuevas.
 
 ---
 

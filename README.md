@@ -19,7 +19,7 @@ Con el tiempo sentí que el nombre era muy genérico y fácil de olvidar. Querí
 
 Me gusta porque suena a lo que todos queremos cuando exponemos: que nos salga un presentazo, así como decimos golazo cuando un gol sale bonito. Esa es la idea de la app, que presentes tranquilo, moviéndote por la sala y pendiente de tu público.
 
-> Nota: el nombre cambió en la versión 1.1.0. Las direcciones siguen usando "mando" (`mjmc4498.github.io/mando`, el repositorio `mando` y el Worker `mando-turn`) para que la versión 1.0.0, que se publicó como Mando, siga funcionando.
+> Nota: el nombre cambió en la versión 1.1.0 y el repositorio ahora se llama `presentazo`. El control del celular está en `mjmc4498.github.io/presentazo`; la dirección anterior, `mjmc4498.github.io/mando`, redirige a la nueva para que lo que ya se publicó siga funcionando. Algunos nombres internos conservan «mando», como el Worker `mando-turn` y el prefijo de las sesiones, porque cambiarlos rompería la compatibilidad entre versiones.
 
 ## Funciones
 
@@ -43,7 +43,7 @@ Además de la extensión, Presentazo tiene una app para Windows y Mac. Sirve par
 - El botón para iniciar la presentación reconoce PowerPoint, Keynote, LibreOffice Impress, Acrobat, Vista Previa y Presentaciones de Google.
 - En Mac pide el permiso de Accesibilidad, que macOS exige para enviar teclas y mover el mouse. En Windows no pide permisos.
 
-**Descarga:** <https://github.com/mjmc4498/mando/releases/latest>. Hay instalador y versión portable para Windows, Mac Intel y Mac con chip M; [`instaladores/LEEME.md`](instaladores/LEEME.md) explica cuál usar. El código está en `escritorio/`.
+**Descarga:** <https://github.com/mjmc4498/presentazo/releases/latest>. Hay instalador y versión portable para Windows, Mac Intel y Mac con chip M; [`instaladores/LEEME.md`](instaladores/LEEME.md) explica cuál usar. El código está en `escritorio/`.
 
 ## Cómo funciona
 
@@ -67,7 +67,7 @@ Además de la extensión, Presentazo tiene una app para Windows y Mac. Sirve par
 └───────────────────────────────────────────────┘
 ```
 
-- El QR contiene `https://…/mando/#id=<sesión>&k=<clave>`. La clave viaja en el fragmento `#` (nunca llega a un servidor) y el celular la borra de la barra de direcciones al conectarse.
+- El QR contiene `https://…/presentazo/#id=<sesión>&k=<clave>`. La clave viaja en el fragmento `#` (nunca llega a un servidor) y el celular la borra de la barra de direcciones al conectarse.
 - **Permisos mínimos:** Presentazo usa `activeTab`, así que solo actúa en la pestaña donde se pulsa su ícono. El acceso a todos los sitios es **opcional** (`optional_host_permissions`) y se pide con un clic solo para «Seguir la pestaña activa» o para presentaciones incrustadas desde otro sitio; se puede quitar en Ajustes.
 - Los scripts de contenido **solo actúan mientras hay una sesión iniciada** y se retiran al detenerla.
 - La capa visual se dibuja en la capa superior del navegador (elemento `popover`), por eso el láser se ve encima de presentaciones en pantalla completa.
@@ -76,7 +76,7 @@ Además de la extensión, Presentazo tiene una app para Windows y Mac. Sirve par
 ## Estructura
 
 ```
-mando/
+presentazo/
 ├── extension/           ← lo que se empaqueta y sube a la Chrome Web Store
 │   ├── manifest.json
 │   ├── background.js    service worker
@@ -105,19 +105,19 @@ mando/
 
 ### 1. Publica el control del celular (una sola vez)
 
-El QR abre `https://mjmc4498.github.io/mando/`, así que esa página debe existir:
+El QR abre `https://mjmc4498.github.io/presentazo/`, así que esa página debe existir:
 
 ```bash
-cd mando
+cd presentazo
 git init -b main && git add . && git commit -m "Presentazo 1.0.0"
-gh repo create mjmc4498/mando --public --source . --push
-gh api -X POST repos/mjmc4498/mando/pages -f build_type=workflow
+gh repo create mjmc4498/presentazo --public --source . --push
+gh api -X POST repos/mjmc4498/presentazo/pages -f build_type=workflow
 ```
 
 El flujo `.github/workflows/pages.yml` publica la carpeta `remote/` en cada cambio. En 1–2 minutos estarán disponibles:
 
-- Control: `https://mjmc4498.github.io/mando/`
-- Privacidad: `https://mjmc4498.github.io/mando/privacy.html`
+- Control: `https://mjmc4498.github.io/presentazo/`
+- Privacidad: `https://mjmc4498.github.io/presentazo/privacy.html`
 
 > ¿Otra dirección? Cambia `REMOTE_URL` en `extension/config.js` (y `homepage_url` en el manifiesto) y vuelve a empaquetar. También puede cambiarse en **Ajustes › Avanzado** sin reempaquetar.
 
@@ -125,7 +125,7 @@ El flujo `.github/workflows/pages.yml` publica la carpeta `remote/` en cada camb
 
 1. Ejecuta `./scripts/build.sh`.
 2. Abre `chrome://extensions`, activa **Modo de desarrollador** y pulsa **Cargar extensión sin empaquetar**.
-3. Elige la carpeta `dist/mando/` (su ruta no cambia entre versiones).
+3. Elige la carpeta `dist/presentazo/` (su ruta no cambia entre versiones).
 4. Abre una presentación, haz clic en el ícono de Presentazo y escanea el QR.
 
 ### 3. Empaqueta
@@ -134,14 +134,14 @@ El flujo `.github/workflows/pages.yml` publica la carpeta `remote/` en cada camb
 ./scripts/build.sh
 ```
 
-Genera `dist/mando-<versión>.zip` para la tienda y la carpeta `dist/mando/` para «Cargar extensión sin empaquetar» (valida manifiesto, íconos, idiomas y scripts antes de comprimir).
+Genera `dist/presentazo-<versión>.zip` para la tienda y la carpeta `dist/presentazo/` para «Cargar extensión sin empaquetar» (valida manifiesto, íconos, idiomas y scripts antes de comprimir).
 
-Para un `.crx` instalable fuera de la tienda: `./scripts/build.sh --crx` (la clave queda en `keys/mando.pem`; guárdala y no la subas a git). **La Chrome Web Store solo acepta el ZIP**; ella firma el paquete final.
+Para un `.crx` instalable fuera de la tienda: `./scripts/build.sh --crx` (la clave queda en `keys/presentazo.pem`; guárdala y no la subas a git). **La Chrome Web Store solo acepta el ZIP**; ella firma el paquete final.
 
 ### 4. Sube a la Chrome Web Store
 
 1. Entra al [Panel del desarrollador](https://chrome.google.com/webstore/devconsole) (registro único de USD 5).
-2. **Nuevo elemento** → sube el ZIP más reciente de `dist/` (hoy `dist/mando-1.1.0.zip`).
+2. **Nuevo elemento** → sube el ZIP más reciente de `dist/` (hoy `dist/presentazo-1.1.0.zip`).
 3. Completa las pestañas copiando los textos de [`store/LISTING.md`](store/LISTING.md) y sube las imágenes de `store/`.
 4. **Enviar para revisión.** Como la extensión pide acceso a todos los sitios, la revisión puede tardar algunos días; las justificaciones de permisos ya están redactadas en `LISTING.md`.
 
@@ -150,7 +150,7 @@ Para un `.crx` instalable fuera de la tienda: `./scripts/build.sh --crx` (la cla
 1. Sube `version` en `extension/manifest.json` (p. ej. de `1.1.0` a `1.1.1`).
 2. Anota los cambios en `CHANGELOG.md`.
 3. `./scripts/build.sh` y sube el nuevo ZIP en el panel (**Paquete › Subir nuevo paquete**). Espera a que la versión anterior termine su revisión.
-4. En Chrome, pulsa **Actualizar** en la página de Extensiones: la carpeta `dist/mando/` siempre tiene la última versión.
+4. En Chrome, pulsa **Actualizar** en la página de Extensiones: la carpeta `dist/presentazo/` siempre tiene la última versión.
 
 ## Desarrollo
 

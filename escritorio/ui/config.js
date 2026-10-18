@@ -2,7 +2,7 @@
 // Usa la misma página del celular y los mismos servidores que la extensión de Chrome,
 // así el control remoto funciona igual con las dos.
 
-export const REMOTE_URL = 'https://mjmc4498.github.io/mando/';
+export const REMOTE_URL = 'https://mjmc4498.github.io/presentazo/';
 
 export const ID_PREFIX = 'mando-';
 
@@ -12,8 +12,8 @@ export const FALLBACK_ICE = {
   iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.l.google.com:19302' }],
 };
 
-export const SITE_URL = 'https://mjmc4498.github.io/mando/';
-export const PRIVACY_URL = 'https://mjmc4498.github.io/mando/privacy.html';
+export const SITE_URL = 'https://presentazo.com/';
+export const PRIVACY_URL = 'https://mjmc4498.github.io/presentazo/privacy.html';
 
 export const SOCIAL = [
   { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/presentazo/' },

@@ -4,6 +4,13 @@ Todas las versiones de Presentazo: la extensión de Chrome y la app de escritori
 extensión, el número de versión de cada paquete debe ser mayor que el anterior para que
 la Chrome Web Store lo acepte.
 
+## App de escritorio 1.0.1 (17 de octubre de 2026)
+
+- El repositorio ahora se llama `presentazo`: el control del celular se abre desde
+  `mjmc4498.github.io/presentazo`. La dirección anterior redirige a la nueva, así que
+  la versión 1.0.0 sigue funcionando.
+- El enlace «Sitio web» de Ajustes lleva a presentazo.com.
+
 ## App de escritorio 1.0.0 (16 de octubre de 2026)
 
 - **Primera versión para Windows y Mac** (Intel y chip M). Controla desde el celular
@@ -23,8 +30,9 @@ la Chrome Web Store lo acepte.
 
 ## 1.1.0 (15 de octubre de 2026)
 
-- **Nuevo nombre: Presentazo** (antes «Mando»). Las direcciones web y el
-  funcionamiento no cambian.
+- **Nuevo nombre: Presentazo** (antes «Mando»). El control del celular pasa a
+  `mjmc4498.github.io/presentazo` (la dirección anterior redirige a la nueva) y el
+  sitio web es presentazo.com.
 - **Más privada:** ya no pide acceso a todos los sitios al instalarse. Actúa
   solo en la pestaña donde pulsas su ícono (`activeTab`). El acceso amplio es
   opcional y se pide con un clic solo para «Seguir la pestaña activa» o para

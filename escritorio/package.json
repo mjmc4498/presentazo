@@ -1,11 +1,11 @@
 {
   "name": "presentazo-escritorio",
   "productName": "Presentazo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Presentazo para escritorio: controla PowerPoint, Keynote y cualquier presentación desde el celular.",
   "author": "Miguel Mogrovejo",
-  "homepage": "https://mjmc4498.github.io/mando/",
+  "homepage": "https://presentazo.com/",
   "license": "UNLICENSED",
   "main": "src/main.js",
   "dependencies": {

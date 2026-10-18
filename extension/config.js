@@ -2,7 +2,7 @@
 
 // Página del control remoto que se abre en el celular (carpeta /remote publicada
 // en GitHub Pages). Si la publicas en otra dirección, cámbiala aquí o en Ajustes.
-export const REMOTE_URL = 'https://mjmc4498.github.io/mando/';
+export const REMOTE_URL = 'https://mjmc4498.github.io/presentazo/';
 
 // Prefijo de los identificadores de sesión en el servidor de señalización PeerJS.
 export const ID_PREFIX = 'mando-';

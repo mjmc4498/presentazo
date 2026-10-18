@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Empaqueta la extensión para la Chrome Web Store.
 #
-#   ./scripts/build.sh          → dist/mando-<versión>.zip   (lo que se sube a la tienda)
-#                                 dist/mando/                (carpeta para «Cargar extensión sin empaquetar»;
+#   ./scripts/build.sh          → dist/presentazo-<versión>.zip   (lo que se sube a la tienda)
+#                                 dist/presentazo/                (carpeta para «Cargar extensión sin empaquetar»;
 #                                                             la ruta no cambia entre versiones)
-#   ./scripts/build.sh --crx    → además dist/mando-<versión>.crx (instalación fuera de la tienda)
+#   ./scripts/build.sh --crx    → además dist/presentazo-<versión>.crx (instalación fuera de la tienda)
 #
-# La clave privada del CRX se guarda en keys/mando.pem: no la compartas ni la subas a git.
+# La clave privada del CRX se guarda en keys/presentazo.pem: no la compartas ni la subas a git.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION=$(python3 -c "import json; print(json.load(open('extension/manifest.json'))['version'])")
-ZIP="dist/mando-${VERSION}.zip"
+ZIP="dist/presentazo-${VERSION}.zip"
 mkdir -p dist
 
 echo "▸ Validando la extensión ${VERSION}…"
@@ -58,7 +58,7 @@ rm -f "$ZIP"
 (cd extension && zip -qr -X -9 "../$ZIP" . -x '.*' -x '*/.*' -x '__MACOSX/*')
 echo "▸ ZIP listo: $ZIP ($(du -h "$ZIP" | cut -f1))"
 
-UNPACKED="dist/mando"
+UNPACKED="dist/presentazo"
 rm -rf "$UNPACKED"
 unzip -q "$ZIP" -d "$UNPACKED"
 echo "▸ Carpeta para «Cargar extensión sin empaquetar»: $UNPACKED"
@@ -70,13 +70,13 @@ if [[ "${1:-}" == "--crx" ]]; then
   mkdir -p keys
   TMP_PROFILE=$(mktemp -d)
   ARGS=(--pack-extension="$PWD/extension" --user-data-dir="$TMP_PROFILE" --no-message-box)
-  [[ -f keys/mando.pem ]] && ARGS+=(--pack-extension-key="$PWD/keys/mando.pem")
+  [[ -f keys/presentazo.pem ]] && ARGS+=(--pack-extension-key="$PWD/keys/presentazo.pem")
   "$CHROME" "${ARGS[@]}" >/dev/null 2>&1 || true
   rm -rf "$TMP_PROFILE"
-  [[ -f extension.pem ]] && mv extension.pem keys/mando.pem
+  [[ -f extension.pem ]] && mv extension.pem keys/presentazo.pem
   if [[ -f extension.crx ]]; then
-    mv extension.crx "dist/mando-${VERSION}.crx"
-    echo "▸ CRX listo: dist/mando-${VERSION}.crx (clave: keys/mando.pem)"
+    mv extension.crx "dist/presentazo-${VERSION}.crx"
+    echo "▸ CRX listo: dist/presentazo-${VERSION}.crx (clave: keys/presentazo.pem)"
   else
     echo "No se pudo generar el CRX"; exit 1
   fi
