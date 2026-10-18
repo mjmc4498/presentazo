@@ -78,16 +78,10 @@ DETALLES CUIDADOS
 • Reconexión automática si la red se interrumpe.
 • Vibración al pulsar (en celulares compatibles).
 
-SÍGUENOS
-Sitio web: https://presentazo.com/
-Facebook: https://www.facebook.com/presentazo/
-Instagram: https://www.instagram.com/presentazo/
-TikTok: https://www.tiktok.com/@presentazo
-YouTube: https://www.youtube.com/@presentazo
-X: https://x.com/presentazo
-
 Creado por Miguel Mogrovejo.
 ```
+
+> No agregues enlaces ni listas de redes sociales o de programas compatibles a la descripción: la tienda la rechazó dos veces por «spam de palabras clave» (octubre de 2026). El sitio web va en el campo **Sitio web oficial** (sección 4).
 
 **Categoría:** Productividad › Herramientas
 
