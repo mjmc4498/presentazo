@@ -10,7 +10,7 @@ Todo lo que pide el [Panel del desarrollador](https://chrome.google.com/webstore
 
 | Campo | Valor |
 |---|---|
-| Primera publicación (en revisión) | `dist/mando-1.0.0.zip` · versión 1.0.0, con el nombre «Mando» |
+| Primera publicación | versión 1.0.0, con el nombre «Mando» (su paquete queda en el historial de git) |
 | Actualización lista para subir | `dist/presentazo-1.1.0.zip` · versión 1.1.0 (ver `CHANGELOG.md`) |
 | Autor | Miguel Mogrovejo |
 
