@@ -1,6 +1,6 @@
-f44678cf06189434d40bc3a535dab66996b338e7c8b4e90b2dec96a0fc164109  mac-intel/instalador/Presentazo-1.1.0-Mac-Intel.dmg
-7ad890f427f2a8381b5488973fbc1252d107b623595a1677c8f88f13e1c40956  mac-intel/portable/Presentazo-1.1.0-Mac-Intel.zip
-1253cc1fec84d4d642bd1c945f5a9c4d34e0d71ffdf4088f707b6b966b458826  mac-chip-m/instalador/Presentazo-1.1.0-Mac-Chip-M.dmg
-000d2c424ebaffc6955e322b416505da97ba1bc5e768f7eee4aef7c462ae9c4a  mac-chip-m/portable/Presentazo-1.1.0-Mac-Chip-M.zip
-65a93b8f56d563bdce7153639ee92f734f1fd45ea1974ce36e07557e650dd627  windows/instalador/Presentazo-1.1.0-Windows-Instalador.exe
-425f875876622ffacfc33973dce47ec314ac7fc428aefb950e3696100d977d83  windows/portable/Presentazo-1.1.0-Windows-Portable.exe
+983ddfb500175b447dfd6a7afd7e8c85ec5196c467bf0a48d77a5a4e22feee92  mac-intel/instalador/Presentazo-1.1.0-Mac-Intel.dmg
+6abae2a208e2d02bd45530d53ec6bb3d680f3b1a494ef693f2862b337478331a  mac-intel/portable/Presentazo-1.1.0-Mac-Intel.zip
+d83b109b29a1ecf17e2d43d5b47d7db184325e34958111754910a25e94df30ae  mac-chip-m/instalador/Presentazo-1.1.0-Mac-Chip-M.dmg
+e05503ba1e0605f3a1fe7b1001cd4c74bd29eb7875186752579700b903c8f7f9  mac-chip-m/portable/Presentazo-1.1.0-Mac-Chip-M.zip
+6ac3723a296c0dcda945cd79b16dec22c310369d66133a38e29b7362c95ba697  windows/instalador/Presentazo-1.1.0-Windows-Instalador.exe
+c01c5acd4eb03a1786c879592f0e0e2bdc4c1c108ac197efd394992302cdac50  windows/portable/Presentazo-1.1.0-Windows-Portable.exe
