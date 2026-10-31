@@ -19,6 +19,15 @@ const WINDOWS = [
   { match: /^wpp\.exe$/i, name: 'WPS Presentation', start: ['F5'] },
 ];
 
+// En Windows, Chrome y Edge agregan al nombre accesible de cada pestaña datos que no son del
+// título («Título - Memory usage - 17.2 MB», «Título - Audio playing»…) y que cambian solos.
+// Se quitan para mostrar el título limpio y para reconocer la pestaña al activarla.
+export const TAB_SUFFIX = String.raw`\s+-\s+(?:Memory usage|Uso de memoria|Audio playing|Reproduciendo audio|Camera recording|Grabando con la cámara|Sharing your screen|Compartiendo la pantalla)\b.*$`;
+
+export function cleanTabName(name) {
+  return String(name || '').replace(new RegExp(TAB_SUFFIX, 'i'), '').trim();
+}
+
 // Nombres conocidos de programas de Windows (por su ejecutable).
 const EXE_NAMES = {
   'chrome.exe': 'Google Chrome', 'msedge.exe': 'Microsoft Edge', 'firefox.exe': 'Firefox', 'brave.exe': 'Brave',

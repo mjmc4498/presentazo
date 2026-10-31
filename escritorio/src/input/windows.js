@@ -7,6 +7,8 @@ import { execFile } from 'node:child_process';
 
 import koffi from 'koffi';
 
+import { TAB_SUFFIX, cleanTabName } from '../apps.js';
+
 const user32 = koffi.load('user32.dll');
 const kernel32 = koffi.load('kernel32.dll');
 const dwmapi = koffi.load('dwmapi.dll');
@@ -325,7 +327,7 @@ ConvertTo-Json -InputObject @($out) -Compress`);
       if (!Array.isArray(data)) return [];
       return data.filter((t) => t && t.title).map((t, i) => {
         const win = browsers.find((w) => w.id === String(t.hwnd));
-        return { id: `${t.hwnd}:${i}`, pid: win.pid, app: win.app, path: win.path, window: win, title: String(t.title), selected: !!t.selected, bounds: win.bounds };
+        return { id: `${t.hwnd}:${i}`, pid: win.pid, app: win.app, path: win.path, window: win, title: cleanTabName(t.title), selected: !!t.selected, bounds: win.bounds };
       });
     },
 
@@ -341,9 +343,10 @@ ConvertTo-Json -InputObject @($out) -Compress`);
       await forceForeground(hwnd);
       const ok = await powershell(`${UIA_HEADER}
 $name = Text '${b64(target.title)}'
+$suffix = Text '${b64(TAB_SUFFIX)}'
 $done = $false
 foreach ($it in (Tabs '${target.window.id}')) {
-  if ($it.Current.Name -eq $name) {
+  if (($it.Current.Name -replace $suffix, '').Trim() -eq $name) {
     $sp = $null
     if ($it.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$sp)) { $sp.Select(); $done = $true }
     break

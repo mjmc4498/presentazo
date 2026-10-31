@@ -202,6 +202,21 @@ async function mac() {
   }
 }
 
+// ---- nombres de pestañas: se quitan los datos que Chrome agrega y que cambian solos
+{
+  const { cleanTabName } = await load('src/apps.js');
+  const casos = [
+    ['Diapositivas Uno - Memory usage - 17.2 MB', 'Diapositivas Uno'],
+    ['Mi deck - Presentaciones de Google - Audio playing - Memory usage - 120 MB', 'Mi deck - Presentaciones de Google'],
+    ['Correo - Uso de memoria: 85,4 MB', 'Correo'],
+    ['Cámara - Camera recording', 'Cámara'],
+    ['Título - normal - con guiones', 'Título - normal - con guiones'],
+    ['', ''],
+  ];
+  const mal = casos.filter(([entrada, esperado]) => cleanTabName(entrada) !== esperado);
+  check('Se limpian los sufijos de memoria y audio de los nombres de pestaña', mal.length === 0, mal.map(([e]) => e).join(' | '));
+}
+
 console.log(`Sistema: ${process.platform} ${process.arch}`);
 try {
   if (process.platform === 'win32') await windows();
