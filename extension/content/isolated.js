@@ -262,8 +262,13 @@
 
   // ------------------------------------------------------------ capa visual (solo marco superior)
 
-  const SIZES = { s: 16, m: 24, l: 34 };
-  const SPOTS = { s: 22, m: 32, l: 44 };
+  // Tamaños en 7 niveles (el 4 es el normal). Láser y lápiz en píxeles; el foco en vmin.
+  // Las mismas tablas usa el control del celular para dibujar el mapa.
+  const LASER_PX = [10, 16, 20, 24, 29, 34, 46];
+  const SPOT_VMIN = [14, 22, 27, 32, 38, 44, 56];
+  const PEN_PX = [1.5, 2.5, 3, 4, 6, 9, 14];
+  const BASE_LEVEL = { s: 2, m: 4, l: 6 }; // equivalencia con los ajustes Pequeño / Mediano / Grande
+  const LEVELS = 7;
   const ARROW = '<svg width="26" height="26" viewBox="0 0 26 26"><path d="M4 2.5v18.2l5.1-4.9 3.3 7.6 3.5-1.5-3.3-7.4 7.1-.3z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
   const CSS = `
@@ -290,7 +295,8 @@
     }
     .laser.on { opacity: 1; }
     .pen {
-      position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+      position: absolute; left: 0; top: 0; width: var(--pr, 18px); height: var(--pr, 18px);
+      margin: calc(var(--pr, 18px) / -2) 0 0 calc(var(--pr, 18px) / -2); border-radius: 50%;
       border: 2px solid var(--ink); background: color-mix(in srgb, var(--ink) 25%, transparent);
       box-shadow: 0 0 0 1px rgba(255,255,255,.7); opacity: 0; transition: opacity .2s ease; will-change: transform;
     }
@@ -332,6 +338,9 @@
       this.strokes = [];
       this.stroke = null;
       this.trail = [];
+      this.levels = {}; // tamaños elegidos desde el celular (mandan sobre los Ajustes)
+      this.posAt = 0;
+      this.posTimer = 0;
       this.raf = 0;
       this.timers = {};
       this.host = null;
@@ -410,9 +419,50 @@
       if (!this.host) return;
       const s = this.host.style;
       s.setProperty('--c', settings.laserColor);
-      s.setProperty('--s', `${SIZES[settings.laserSize] || SIZES.m}px`);
-      s.setProperty('--d', `${SPOTS[settings.spotSize] || SPOTS.m}vmin`);
+      s.setProperty('--s', `${LASER_PX[this.level('laser') - 1]}px`);
+      s.setProperty('--d', `${SPOT_VMIN[this.level('spot') - 1]}vmin`);
+      s.setProperty('--pr', `${12 + PEN_PX[this.level('pen') - 1] * 1.5}px`);
       s.setProperty('--ink', this.inkColor);
+    }
+
+    // Nivel (1 a 7) de una herramienta: el del celular si lo cambió; si no, el de los Ajustes.
+    level(tool) {
+      const own = this.levels[tool];
+      if (own) return own;
+      if (tool === 'pen') return 4;
+      return BASE_LEVEL[settings[`${tool}Size`]] || 4;
+    }
+
+    size({ which, level }) {
+      if (!(which in { laser: 1, spot: 1, pen: 1 })) return;
+      this.levels[which] = Math.max(1, Math.min(LEVELS, Math.round(Number(level)) || 4));
+      this.applySettings();
+    }
+
+    // Informa al celular dónde está el puntero (como fracción de la pantalla), sin saturar el canal.
+    reportPos(force = false) {
+      const wait = 45 - (performance.now() - this.posAt);
+      if (!force && wait > 0) {
+        if (!this.posTimer) this.posTimer = setTimeout(() => { this.posTimer = 0; this.reportPos(true); }, wait);
+        return;
+      }
+      clearTimeout(this.posTimer);
+      this.posTimer = 0;
+      this.posAt = performance.now();
+      try {
+        chrome.runtime.sendMessage({
+          to: 'offscreen', type: 'pos',
+          x: +(this.pos.x / innerWidth).toFixed(4), y: +(this.pos.y / innerHeight).toFixed(4), w: innerWidth, h: innerHeight,
+        }).catch(() => {});
+      } catch {}
+    }
+
+    center() {
+      this.pos.x = innerWidth / 2;
+      this.pos.y = innerHeight / 2;
+      this.shown = { ...this.pos };
+      this.animate();
+      this.reportPos(true);
     }
 
     resize() {
@@ -435,6 +485,7 @@
       this.pos.x = Math.max(0, Math.min(innerWidth - 1, this.pos.x + dx * scale));
       this.pos.y = Math.max(0, Math.min(innerHeight - 1, this.pos.y + dy * scale));
       this.animate();
+      this.reportPos();
     }
 
     animate() {
@@ -472,7 +523,7 @@
       const life = 260;
       this.trail = this.trail.filter((p) => now - p.t < life);
       if (this.trail.length < 2) return;
-      const size = SIZES[settings.laserSize] || SIZES.m;
+      const size = LASER_PX[this.level('laser') - 1];
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = settings.laserColor;
@@ -503,10 +554,12 @@
       this.el.pen.classList.remove('on');
       this.el.cursor.classList.toggle('on', mode === 'mouse');
       if (mode === 'mouse') this.autoHide('cursor', 4000);
+      this.reportPos(true);
     }
 
     pointer(cmd) {
       this.ensure();
+      if (cmd.a === 'center') { this.center(); return; }
       if (cmd.a === 'move') {
         this.moveBy(cmd.dx, cmd.dy);
         if (this.mode === 'pen') { this.el.pen.classList.add('on'); this.autoHide('pen', 2500); }
@@ -571,7 +624,7 @@
     // -------- tinta
 
     beginStroke() {
-      this.stroke = { color: this.inkColor, width: 4, pts: [] };
+      this.stroke = { color: this.inkColor, width: PEN_PX[this.level('pen') - 1], pts: [] };
       this.strokes.push(this.stroke);
       this.addInkPoint(this.shown.x, this.shown.y);
     }
@@ -658,6 +711,7 @@
 
     destroy() {
       cancelAnimationFrame(this.raf);
+      clearTimeout(this.posTimer);
       for (const t of Object.values(this.timers)) clearTimeout(t);
       removeEventListener('resize', this.onResize);
       document.removeEventListener('fullscreenchange', this.onFullscreen, true);
@@ -700,6 +754,9 @@
         break;
       case 'ink':
         overlay.ink(cmd);
+        break;
+      case 'size':
+        overlay.size(cmd);
         break;
       case 'nav':
         if (cmd.a === 'black') return { ok: true, state: { black: overlay.setBlack(!overlay.black) } };

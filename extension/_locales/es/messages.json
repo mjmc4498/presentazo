@@ -285,6 +285,12 @@
   "newCodeEachSessionSub": {
     "message": "Más seguro: el QR cambia cada vez que inicias una sesión. Si lo desactivas, el código se mantiene y tu celular se reconecta solo."
   },
+  "previewEnabled": {
+    "message": "Vista previa en el celular"
+  },
+  "previewEnabledSub": {
+    "message": "Envía al celular una imagen reducida de la pestaña que presentas, para ver qué se muestra. Solo llega a tu celular, cifrada, y no se guarda."
+  },
   "needsAccess": {
     "message": "Para controlar esta pestaña, ábrela y pulsa el ícono de Presentazo."
   },

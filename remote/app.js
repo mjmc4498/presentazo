@@ -1,11 +1,11 @@
 // Presentazo — control remoto para el celular.
-// Se conecta por WebRTC (PeerJS) con la extensión de Chrome y le envía órdenes.
+// Se conecta por WebRTC (PeerJS) con la extensión de Chrome o la app de escritorio y le envía órdenes.
 
 /* global Peer */
 (() => {
   'use strict';
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
 
   // Worker de Cloudflare que entrega credenciales temporales de retransmisión (TURN)
   // para redes que bloquean la conexión directa.
@@ -56,12 +56,26 @@
     airUnsupported: 'Tu celular no permite usar el giroscopio aquí',
     airDenied: 'Permiso de movimiento denegado',
     controlling: 'Controlando',
+    peekNow: 'En pantalla', peekNext: 'Siguiente',
+    peekUnknown: 'Aún no la has visto', peekLoading: 'Cargando…',
+    peekOld: 'Actualiza Presentazo en la computadora para ver la vista previa.',
+    peekHostOff: 'La vista previa está desactivada en la computadora.',
+    peekPhoneOff: 'Vista previa desactivada en este celular.',
+    peekPermission: 'En la computadora, da a Presentazo el permiso de grabación de pantalla.',
+    peekInactive: 'La pestaña de la presentación no está a la vista.',
+    peekFail: 'No se pudo capturar la pantalla.',
+    sizeUp: 'Más grande', sizeDown: 'Más pequeño', center: 'Centrar', airSens: 'Sensibilidad',
+    mapLabel: 'Posición del puntero en la pantalla',
+    previewSetting: 'Vista previa de la pantalla',
+    previewSettingSub: 'Muestra en el celular una imagen pequeña de la presentación.',
+    sizeOf: { laser: 'Láser', spot: 'Foco', pen: 'Lápiz' },
   };
   const t = (key) => TEXT[key] ?? key;
 
   document.documentElement.lang = 'es';
   for (const el of $$('[data-t]')) el.textContent = t(el.dataset.t);
   for (const el of $$('[data-t-aria]')) el.setAttribute('aria-label', t(el.dataset.tAria));
+  for (const el of $$('[data-aria]')) el.setAttribute('aria-label', t(el.dataset.aria));
   for (const el of $$('[data-t-ph]')) el.placeholder = t(el.dataset.tPh);
   $('#timer').setAttribute('aria-label', t('timer'));
   $('#version').textContent = VERSION;
@@ -83,7 +97,7 @@
     },
   };
 
-  const prefs = { sens: 1, haptics: true, wake: true, ptrMode: 'laser', ink: '#FF3B30', ...store.get('prefs', {}) };
+  const prefs = { sens: 1, airSens: 1, haptics: true, wake: true, preview: true, ptrMode: 'laser', ink: '#FF3B30', ...store.get('prefs', {}) };
   const savePrefs = () => store.set('prefs', prefs);
 
   // ================================================================ utilidades
@@ -328,10 +342,22 @@
         lastPong = Date.now();
         setConn('connected');
         setTarget(msg.target);
+        setCaps(msg.caps, msg.levels);
         startPing();
         keepAwake();
         buzz(20);
         announceView();
+        syncSizes();
+        syncPreview(true);
+        break;
+      case 'caps':
+        setCaps(msg.caps, msg.levels);
+        break;
+      case 'pos':
+        onPos(msg);
+        break;
+      case 'thumb':
+        onThumb(msg);
         break;
       case 'target':
         setTarget(msg);
@@ -401,7 +427,7 @@
   }
 
   let lastOfflineToast = 0;
-  const SILENT = new Set(['ptr', 'scroll', 'ping', 'mode', 'ink']);
+  const SILENT = new Set(['ptr', 'scroll', 'ping', 'mode', 'ink', 'size', 'preview']);
   function send(msg) {
     if (demo) return true;
     if (conn?.open && connState === 'connected') {
@@ -462,6 +488,8 @@
     const mode = VIEW_MODES[view] ?? prefs.ptrMode;
     send({ t: 'mode', mode });
     if (mode === 'pen') send({ t: 'ink', a: 'color', color: prefs.ink });
+    syncPreview();
+    scheduleMap();
   }
 
   for (const b of $$('.tabs button')) {
@@ -522,11 +550,309 @@
     dot.style.transform = `translate(${e.clientX - r.left}px, ${e.clientY - r.top}px)`;
   }
 
+  // ================================================================ capacidades de la computadora
+
+  // Las versiones anteriores de Presentazo no envían la posición del puntero ni la vista
+  // previa: cada computadora declara lo que sabe hacer cuando se conecta.
+  const host = { caps: {}, levels: {} };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  function setCaps(caps, levels) {
+    host.caps = caps && typeof caps === 'object' ? caps : {};
+    if (levels && typeof levels === 'object') host.levels = levels;
+    app.dataset.pos = host.caps.pos ? 'on' : 'off';
+    app.dataset.size = host.caps.size ? 'on' : 'off';
+    app.dataset.thumbSupport = host.caps.thumb === undefined ? 'off' : 'on';
+    renderSize();
+    syncPreview();
+  }
+
+  // ================================================================ tamaño del láser, el foco y el lápiz
+
+  const LEVELS = 7;
+  // Mismas tablas que usan la extensión y la app de escritorio: láser y lápiz en píxeles,
+  // foco en % del lado menor de la pantalla. El nivel 4 es el tamaño normal.
+  const SIZE_TABLE = {
+    laser: [10, 16, 20, 24, 29, 34, 46],
+    spot: [14, 22, 27, 32, 38, 44, 56],
+    pen: [1.5, 2.5, 3, 4, 6, 9, 14],
+  };
+  const sizes = {}; // lo que se ajustó desde este celular en esta visita
+  const levelOf = (tool) => sizes[tool] ?? host.levels[tool] ?? 4;
+
+  function renderSize() {
+    const tool = prefs.ptrMode;
+    const level = levelOf(tool);
+    $('#size-level').textContent = `${level}/${LEVELS}`;
+    $('#size-level').setAttribute('aria-label', `${TEXT.sizeOf[tool]}: ${level} de ${LEVELS}`);
+    $('#size-up').disabled = level >= LEVELS;
+    $('#size-down').disabled = level <= 1;
+    scheduleMap();
+  }
+
+  function setSize(level) {
+    const tool = prefs.ptrMode;
+    level = clamp(Math.round(level), 1, LEVELS);
+    if (level === levelOf(tool)) return false;
+    sizes[tool] = level;
+    send({ t: 'size', which: tool, level });
+    renderSize();
+    buzz(6);
+    return true;
+  }
+
+  // Tras reconectar, la computadora recupera los tamaños que se eligieron aquí.
+  function syncSizes() {
+    if (!host.caps.size) return;
+    for (const [which, level] of Object.entries(sizes)) send({ t: 'size', which, level });
+  }
+
+  // Mantener pulsado repite el cambio.
+  function holdToRepeat(btn, delta) {
+    let first = 0;
+    let repeat = 0;
+    const stop = () => { clearTimeout(first); clearInterval(repeat); };
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      stop();
+      setSize(levelOf(prefs.ptrMode) + delta);
+      first = setTimeout(() => {
+        repeat = setInterval(() => { if (!setSize(levelOf(prefs.ptrMode) + delta)) stop(); }, 130);
+      }, 380);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) btn.addEventListener(ev, stop);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  holdToRepeat($('#size-up'), 1);
+  holdToRepeat($('#size-down'), -1);
+
+  // ================================================================ mapa de la pantalla
+
+  // Muestra dónde está el puntero en la pantalla de la computadora, con la forma y el
+  // tamaño reales de la herramienta (láser, foco, lápiz o cursor del mouse).
+  const map = { ar: 16 / 9, x: 0.5, y: 0.5, hostW: 1920, queued: false };
+  const clamp01 = (v) => clamp(Number(v) || 0, 0, 1);
+
+  function onPos(msg) {
+    const w = Number(msg.w);
+    const h = Number(msg.h);
+    if (!(w > 0 && h > 0)) return;
+    map.x = clamp01(msg.x);
+    map.y = clamp01(msg.y);
+    map.hostW = w;
+    map.ar = w / h;
+    scheduleMap();
+  }
+
+  function scheduleMap() {
+    if (map.queued) return;
+    map.queued = true;
+    requestAnimationFrame(renderMap);
+    // Respaldo por si el navegador no pinta cuadros (página en segundo plano, vistas incrustadas).
+    setTimeout(() => { if (map.queued) renderMap(); }, 120);
+  }
+
+  function dotSize(tool, w, h) {
+    if (tool === 'mouse') return 9;
+    const value = SIZE_TABLE[tool][levelOf(tool) - 1];
+    // El foco se dibuja a escala real. El láser y el lápiz serían puntos invisibles en un
+    // mapa pequeño: se dibujan con una escala visual proporcional a su tamaño real.
+    if (tool === 'spot') return (value / 100) * Math.min(w, h);
+    const top = SIZE_TABLE[tool][LEVELS - 1];
+    return tool === 'pen' ? 5 + (value / top) * 12 : 6 + (value / top) * 20;
+  }
+
+  function renderMap() {
+    map.queued = false;
+    for (const el of $$('[data-map]')) {
+      const room = { w: el.clientWidth - 16, h: el.clientHeight - 16 };
+      if (room.w <= 0 || room.h <= 0) continue;
+      const w = Math.min(room.w, room.h * map.ar);
+      const h = w / map.ar;
+      const screen = el.firstElementChild;
+      screen.style.width = `${w}px`;
+      screen.style.height = `${h}px`;
+      const tool = el.closest('#mouse-hud') ? 'mouse' : prefs.ptrMode;
+      el.dataset.tool = tool;
+      el.style.setProperty('--ink', prefs.ink);
+      const dot = el.querySelector('.map-dot');
+      dot.style.left = `${map.x * 100}%`;
+      dot.style.top = `${map.y * 100}%`;
+      const d = dotSize(tool, w, h);
+      dot.style.width = dot.style.height = `${d}px`;
+    }
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(scheduleMap);
+    for (const el of $$('[data-map]')) observer.observe(el);
+  }
+
+  // ================================================================ vista previa de la pantalla
+
+  // La computadora envía una imagen pequeña de lo que se está presentando. «Lo que sigue»
+  // no se puede saber de antemano con cualquier programa: Presentazo lo aprende al ver qué
+  // aparece después de cada «Siguiente» o «Anterior». Tras recorrer la presentación una vez,
+  // la miniatura de la siguiente ya está disponible.
+  const peek = {
+    url: null, // última imagen recibida
+    error: null,
+    states: new Map(), // id -> { sig, url }
+    nextOf: new Map(), // id -> id de lo que aparece al pulsar «Siguiente»
+    cur: null, // id de la diapositiva en pantalla (ya estable)
+    learned: null, // última imagen ya procesada
+    ids: 0,
+    seq: 0,
+  };
+  const MAX_STATES = 150;
+  // Diferencia media (de 255) bajo la cual dos capturas son la misma diapositiva. Es estricto a
+  // propósito: tomar una diapositiva por dos solo deja «siguiente» sin conocer; confundir dos
+  // distintas mostraría una miniatura equivocada.
+  const SAME_SLIDE = 2.5;
+  const SIG_W = 32;
+  const SIG_H = 18;
+  let previewOn = null;
+  let lastNavAt = 0;
+  let lastNav = null; // { dir, from, count }
+
+  function wantPreview() {
+    return connState === 'connected' && host.caps.thumb === true && prefs.preview &&
+      document.visibilityState === 'visible' && ['slides', 'pointer', 'mouse'].includes(app.dataset.view);
+  }
+
+  function syncPreview(force = false) {
+    const on = wantPreview();
+    if (force || on !== previewOn) {
+      previewOn = on;
+      send({ t: 'preview', on });
+    }
+    renderPeek();
+  }
+
+  function peekStatus() {
+    if (host.caps.thumb === undefined) return ['off', t('peekOld')];
+    if (host.caps.thumb === false) return ['off', t('peekHostOff')];
+    if (!prefs.preview) return ['off', t('peekPhoneOff')];
+    if (peek.error) {
+      const key = { permission: 'peekPermission', inactive: 'peekInactive', access: 'needsAccess' }[peek.error];
+      return ['off', t(key || 'peekFail')];
+    }
+    return [peek.url ? 'ok' : 'loading', ''];
+  }
+
+  function setImg(img, url) {
+    if (!url) { img.hidden = true; return; }
+    if (img.dataset.v !== String(url.length) + url.slice(-24)) {
+      img.src = url;
+      img.dataset.v = String(url.length) + url.slice(-24);
+    }
+    img.hidden = false;
+  }
+
+  function renderPeek() {
+    const [state, message] = peekStatus();
+    const box = $('#peek');
+    box.dataset.state = state;
+    $('#peek-msg').textContent = message;
+    const live = state === 'ok' ? peek.url : null;
+    setImg($('#peek-now'), live);
+    $('#peek-now-empty').textContent = state === 'loading' ? t('peekLoading') : '';
+    const known = peek.states.get(peek.nextOf.get(peek.cur));
+    setImg($('#peek-next'), state === 'ok' ? known?.url : null);
+    $('#peek-next-empty').textContent = state === 'ok' && !known ? t('peekUnknown') : '';
+    for (const img of $$('.map-img')) setImg(img, live);
+  }
+
+  // Firma de la imagen: 32×18 niveles de gris. Dos capturas de la misma diapositiva son casi
+  // iguales aunque cambie un punto láser; otra diapositiva difiere más.
+  const sigCanvas = document.createElement('canvas');
+  sigCanvas.width = SIG_W;
+  sigCanvas.height = SIG_H;
+  const sigCtx = sigCanvas.getContext('2d', { willReadFrequently: true });
+
+  async function signature(url) {
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      sigCtx.drawImage(img, 0, 0, SIG_W, SIG_H);
+      const px = sigCtx.getImageData(0, 0, SIG_W, SIG_H).data;
+      const sig = new Uint8Array(SIG_W * SIG_H);
+      for (let i = 0; i < sig.length; i++) sig[i] = (px[i * 4] * 0.3 + px[i * 4 + 1] * 0.59 + px[i * 4 + 2] * 0.11) | 0;
+      return sig;
+    } catch { return null; }
+  }
+
+  function distance(a, b) {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+    return sum / a.length;
+  }
+
+  function noteNav(dir) {
+    const now = performance.now();
+    if (lastNav && now - lastNavAt < 1200) lastNav.count += 1; // varios toques seguidos: no se aprende
+    else lastNav = { dir, from: peek.cur, count: 1 };
+    lastNavAt = now;
+  }
+
+  async function learn(url) {
+    // Las capturas tomadas en plena transición no sirven para aprender.
+    if (performance.now() - lastNavAt < 800) return;
+    if (url === peek.learned && !lastNav) return; // ya aprendida y sin nada pendiente
+    const ticket = ++peek.seq;
+    const sig = await signature(url);
+    if (!sig || ticket !== peek.seq) return;
+
+    let id = null;
+    for (const [key, st] of peek.states) {
+      if (distance(st.sig, sig) < SAME_SLIDE) { id = key; break; }
+    }
+    if (id === null) {
+      id = ++peek.ids;
+      peek.states.set(id, { sig, url });
+      if (peek.states.size > MAX_STATES) peek.states.delete(peek.states.keys().next().value);
+    } else {
+      peek.states.get(id).url = url;
+    }
+
+    if (lastNav && performance.now() - lastNavAt >= 800) {
+      const { dir, from, count } = lastNav;
+      lastNav = null;
+      if (count === 1 && from != null && from !== id) {
+        if (dir === 'next') peek.nextOf.set(from, id);
+        else peek.nextOf.set(id, from);
+      }
+    }
+    peek.cur = id;
+    peek.learned = url;
+    renderPeek();
+  }
+
+  function onThumb(msg) {
+    if (msg.same) {
+      // La pantalla sigue igual que la última imagen: sirve para confirmar que ya es estable.
+      if (peek.url && peek.error === null) learn(peek.url);
+      return;
+    }
+    if (msg.error) {
+      peek.error = String(msg.error);
+      renderPeek();
+      return;
+    }
+    if (typeof msg.img !== 'string' || !msg.img.startsWith('data:image/jpeg;base64,') || msg.img.length > 400000) return;
+    peek.error = null;
+    peek.url = msg.img;
+    renderPeek();
+    learn(msg.img);
+  }
+
   // ================================================================ diapositivas
 
   function nav(action) {
     flush();
     send({ t: 'nav', a: action });
+    if (action === 'next' || action === 'prev') noteNav(action);
     buzz(action === 'next' || action === 'prev' ? 12 : 8);
   }
 
@@ -579,6 +905,7 @@
     app.dataset.ptr = mode;
     for (const b of $$('#ptr-modes button')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
     updatePtrHint();
+    renderSize();
     if (app.dataset.view === 'pointer') send({ t: 'mode', mode });
     if (mode === 'pen') send({ t: 'ink', a: 'color', color: prefs.ink });
   }
@@ -598,6 +925,7 @@
     savePrefs();
     for (const b of $$('#ink-colors button')) b.setAttribute('aria-pressed', String(b.dataset.color === color));
     send({ t: 'ink', a: 'color', color });
+    scheduleMap();
   }
   for (const b of $$('#ink-colors button')) b.addEventListener('click', () => { setInk(b.dataset.color); buzz(6); });
   $('#ink-undo').addEventListener('click', () => { send({ t: 'ink', a: 'undo' }); buzz(8); });
@@ -639,29 +967,29 @@
   });
 
   // ---------------- modo aire (giroscopio)
+  // La interpretación del giro (ejes, filtro, aceleración) está en air.js.
 
+  const airEngine = typeof PresentazoAir !== 'undefined'
+    ? PresentazoAir.create({ emit: (dx, dy) => queue('ptr', dx, dy), sens: () => prefs.airSens })
+    : null;
   let motionActive = false;
   let motionSeen = false;
 
   function onMotion(e) {
-    const r = e.rotationRate;
-    if (!r) return;
-    motionSeen = true;
-    let interval = e.interval || 16;
-    if (interval < 1) interval *= 1000; // iOS lo informa en segundos
-    const dt = Math.min(interval, 50) / 1000;
-    const dead = 1.5;
-    const yaw = Math.abs(r.alpha || 0) > dead ? r.alpha : 0;
-    const pitch = Math.abs(r.beta || 0) > dead ? r.beta : 0;
-    const k = prefs.sens / 38; // ~38° de giro recorren todo el ancho
-    queue('ptr', -yaw * dt * k, -pitch * dt * k);
+    if (airEngine?.motion(e)) motionSeen = true;
+  }
+
+  function onOrientation(e) {
+    airEngine?.orientation(e);
   }
 
   function startMotion() {
-    if (motionActive) return;
+    if (motionActive || !airEngine) return;
     motionActive = true;
     motionSeen = false;
+    airEngine.start();
     window.addEventListener('devicemotion', onMotion);
+    window.addEventListener('deviceorientation', onOrientation);
     send({ t: 'ptr', a: 'down', ink: prefs.ptrMode === 'pen' });
     buzz(8);
     setTimeout(() => {
@@ -673,26 +1001,44 @@
     if (!motionActive) return;
     motionActive = false;
     window.removeEventListener('devicemotion', onMotion);
+    window.removeEventListener('deviceorientation', onOrientation);
     flush();
     send({ t: 'ptr', a: 'up' });
   }
 
+  // iOS pide permiso de «movimiento y orientación» con un toque del usuario.
+  async function askMotionPermission() {
+    const asks = [globalThis.DeviceMotionEvent, globalThis.DeviceOrientationEvent]
+      .filter((E) => E && typeof E.requestPermission === 'function')
+      .map((E) => E.requestPermission().catch(() => 'denied'));
+    if (!asks.length) return true;
+    return (await Promise.all(asks))[0] === 'granted';
+  }
+
   $('#air-toggle').addEventListener('click', async () => {
     if (!air) {
-      if (typeof DeviceMotionEvent === 'undefined') { toast(t('airUnsupported')); return; }
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-          if ((await DeviceMotionEvent.requestPermission()) !== 'granted') { toast(t('airDenied')); return; }
-        } catch {
-          toast(t('airDenied'));
-          return;
-        }
-      }
+      if (!airEngine || typeof DeviceMotionEvent === 'undefined') { toast(t('airUnsupported')); return; }
+      if (!(await askMotionPermission())) { toast(t('airDenied')); return; }
     }
     air = !air;
     $('#air-toggle').classList.toggle('on', air);
+    app.dataset.air = air ? 'on' : 'off';
     updatePtrHint();
+    scheduleMap();
     buzz(10);
+  });
+
+  // Vuelve el puntero al centro de la pantalla (por si el giro lo fue desviando).
+  $('#air-center').addEventListener('click', () => {
+    flush();
+    send({ t: 'ptr', a: 'center' });
+    buzz(10);
+  });
+
+  $('#air-sens').value = prefs.airSens;
+  $('#air-sens').addEventListener('input', (e) => {
+    prefs.airSens = Number(e.target.value);
+    savePrefs();
   });
 
   // ================================================================ mouse
@@ -920,6 +1266,7 @@
     $('#sens-value').textContent = `${Number(prefs.sens).toFixed(1)}×`;
     $('#haptics').checked = prefs.haptics;
     $('#wake').checked = prefs.wake;
+    $('#preview').checked = prefs.preview;
     $('#latency').textContent = latency != null ? `${latency} ms` : '—';
   }
 
@@ -937,6 +1284,11 @@
     savePrefs();
   });
   $('#haptics').addEventListener('change', (e) => { prefs.haptics = e.target.checked; savePrefs(); buzz(10); });
+  $('#preview').addEventListener('change', (e) => {
+    prefs.preview = e.target.checked;
+    savePrefs();
+    syncPreview();
+  });
   $('#wake').addEventListener('change', (e) => {
     prefs.wake = e.target.checked;
     savePrefs();
@@ -979,9 +1331,11 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') {
       stopMotion();
+      syncPreview();
       return;
     }
     keepAwake();
+    syncPreview();
     if (demo || !session) return;
     if (!conn?.open && !['denied', 'kicked', 'unsupported', 'idle'].includes(connState)) {
       retryDelay = 1200;
@@ -994,7 +1348,48 @@
     try { conn?.close(); } catch {}
   });
 
+
+  // En el modo demostración se simulan la posición del puntero y la vista previa.
+  function demoPreview() {
+    setCaps({ pos: true, size: true, thumb: true }, { laser: 4, spot: 4, pen: 4 });
+    const slide = (n, title) => {
+      const c = document.createElement('canvas');
+      c.width = 320;
+      c.height = 180;
+      const g = c.getContext('2d');
+      g.fillStyle = '#f5f5f7';
+      g.fillRect(0, 0, 320, 180);
+      g.fillStyle = '#ff3b30';
+      g.font = '700 11px sans-serif';
+      g.fillText(`ESTRATEGIA 2026 · ${n}`, 22, 30);
+      g.fillStyle = '#0b0b0c';
+      g.font = '800 26px sans-serif';
+      title.split('\n').forEach((line, i) => g.fillText(line, 22, 66 + i * 30));
+      g.fillStyle = '#c7c7cc';
+      for (let i = 0; i < 3; i++) g.fillRect(22, 128 + i * 12, 150 - i * 30, 6);
+      g.fillStyle = '#111';
+      g.fillRect(228, 70 + (n % 2) * 14, 24, 80 - (n % 2) * 14);
+      g.fillRect(262, 50, 24, 100);
+      return c.toDataURL('image/jpeg', 0.8);
+    };
+    const now = slide(3, 'Crecimiento\nsostenido');
+    const next = slide(4, 'Próximos\npasos');
+    peek.states.set(1, { sig: new Uint8Array(SIG_W * SIG_H), url: now });
+    peek.states.set(2, { sig: new Uint8Array(SIG_W * SIG_H).fill(90), url: next });
+    peek.nextOf.set(1, 2);
+    peek.cur = 1;
+    peek.url = now;
+    if (query.get('next') === 'unknown') peek.nextOf.clear();
+    if (query.has('nopreview')) host.caps.thumb = false;
+    onPos({ x: 0.62, y: 0.55, w: 1920, h: 1080 });
+    if (query.has('air')) { air = true; app.dataset.air = 'on'; $('#air-toggle').classList.add('on'); updatePtrHint(); }
+    renderPeek();
+    renderSize();
+  }
+
   // Inicio
+  app.dataset.air = 'off';
+  setCaps({});
   setPtrMode(['laser', 'spot', 'pen'].includes(query.get('mode')) ? query.get('mode') : prefs.ptrMode);
   setInk(prefs.ink);
   const initialView = query.get('view') || store.get('view', 'slides');
@@ -1007,6 +1402,7 @@
     latency = 14;
     setConn('connected');
     setTarget({ title: query.get('title') || 'Estrategia 2026 — Presentaciones de Google', ok: true });
+    demoPreview();
     timer.set(12 * 60 * 1000 + 48 * 1000, query.get('timer') !== 'paused');
     if (query.has('black')) $('#chip-black').classList.add('on');
   } else if (session) {

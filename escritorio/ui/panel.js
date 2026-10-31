@@ -105,6 +105,7 @@ function renderSettings() {
   pressed('nextKey', s.nextKey);
   for (const input of document.querySelectorAll('[data-setting]')) input.checked = !!s[input.dataset.setting];
 
+  $('screen-perm').hidden = !(snap.platform === 'mac' && s.previewEnabled && snap.screenAccess !== 'granted');
   $('openAtLogin').disabled = !snap.packaged;
   $('login-note').hidden = snap.packaged && !snap.loginError;
   $('login-note').textContent = !snap.packaged
@@ -319,6 +320,7 @@ $('reset').addEventListener('click', async () => {
 });
 
 $('perm-btn').addEventListener('click', () => api.askPermission());
+$('screen-perm-btn').addEventListener('click', () => api.askScreenPermission());
 
 const LINKS = { site: SITE_URL, privacy: PRIVACY_URL };
 for (const a of document.querySelectorAll('[data-link]')) {

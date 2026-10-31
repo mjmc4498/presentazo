@@ -35,17 +35,17 @@
     </div>
   </header>
   <section>
-    <p class="muted" style="margin-top:20px">Última actualización: 17 de octubre de 2026 (extensión 1.1 y app de escritorio 1.0.1) · Autor: Miguel Mogrovejo</p>
+    <p class="muted" style="margin-top:20px">Última actualización: 31 de octubre de 2026 (extensión 1.2 y app de escritorio 1.1) · Autor: Miguel Mogrovejo</p>
 
     <div class="card">
       <strong>En resumen:</strong> Presentazo no recopila, vende ni comparte datos personales. No usa cuentas, analítica, publicidad ni cookies. Tu celular y tu computadora se comunican de forma directa y cifrada.
     </div>
 
     <h2>Qué hace Presentazo</h2>
-    <p>Presentazo te permite controlar una presentación desde tu celular: avanzar o retroceder diapositivas, mostrar un puntero láser, dibujar, mover un mouse remoto y escribir texto. Existe como extensión de Chrome y como app de escritorio para Windows y Mac. Al escanear el código QR, tu celular abre esta página web y se conecta con tu computadora.</p>
+    <p>Presentazo te permite controlar una presentación desde tu celular: avanzar o retroceder diapositivas, ver una vista previa de lo que se muestra, señalar con un puntero láser, dibujar, mover un mouse remoto y escribir texto. Existe como extensión de Chrome y como app de escritorio para Windows y Mac. Al escanear el código QR, tu celular abre esta página web y se conecta con tu computadora.</p>
 
     <h2>Datos que no recopilamos</h2>
-    <p>Presentazo no tiene servidores propios ni base de datos. No recopilamos tu nombre, correo, historial de navegación, contenido de las páginas, ubicación ni ningún otro dato personal.</p>
+    <p>Presentazo no tiene servidores propios ni base de datos. No recopilamos tu nombre, correo, historial de navegación, ubicación ni ningún otro dato personal, y nada de lo que se muestra en la vista previa llega a nosotros (ver «Vista previa de la pantalla»).</p>
 
     <h2>Cómo funciona la conexión</h2>
     <ul>
@@ -56,10 +56,21 @@
     </ul>
 
     <h2>Acceso a las páginas web</h2>
-    <p>Presentazo solo actúa en la pestaña donde pulsas su ícono: ahí ejecuta tus órdenes (simular teclas y clics, y dibujar el puntero encima de la presentación). Únicamente si tú lo autorizas, puede actuar en otros sitios: al activar «Seguir la pestaña activa» o cuando tu presentación está incrustada desde otro sitio. Puedes quitar ese acceso en Ajustes. Presentazo no lee, guarda ni envía el contenido de las páginas. Lo único que se envía a tu celular es el título de la pestaña controlada, para que sepas qué estás controlando.</p>
+    <p>Presentazo solo actúa en la pestaña donde pulsas su ícono: ahí ejecuta tus órdenes (simular teclas y clics, y dibujar el puntero encima de la presentación). Únicamente si tú lo autorizas, puede actuar en otros sitios: al activar «Seguir la pestaña activa» o cuando tu presentación está incrustada desde otro sitio. Puedes quitar ese acceso en Ajustes. Presentazo no lee ni guarda el contenido de las páginas. A tu celular solo se envían el título de la pestaña controlada, para que sepas qué estás controlando, la posición del puntero y, si no la desactivas, la vista previa descrita abajo.</p>
+
+    <h2>Vista previa de la pantalla</h2>
+    <p>Para mostrarte en el celular lo que está en pantalla y qué diapositiva sigue, Presentazo envía a tu celular una <strong>imagen reducida</strong> (unos 480 píxeles de ancho, parecida a una captura de pantalla pequeña) de la pestaña que controlas, en la extensión, o de la pantalla donde presentas, en la app de escritorio. Esa imagen:</p>
+    <ul>
+      <li>viaja cifrada de punto a punto y <strong>solo llega a tu celular</strong>, el que escaneó tu código QR;</li>
+      <li>no se guarda en la computadora ni se envía a ningún servidor de Presentazo (el servidor de retransmisión de Cloudflare, si hace falta, solo ve tráfico cifrado);</li>
+      <li>en el celular se conserva únicamente en memoria mientras la página está abierta, para mostrar la miniatura de la diapositiva siguiente; se pierde al cerrarla;</li>
+      <li>solo se captura mientras tu celular tiene abiertas las pestañas Diapositivas, Puntero o Mouse y la pantalla encendida;</li>
+      <li>puedes desactivarla cuando quieras, en el celular (Ajustes) y en la computadora (Ajustes de la extensión o de la app).</li>
+    </ul>
+    <p>En la extensión, la captura usa el mismo permiso <code>activeTab</code> y solo funciona en la pestaña donde pulsaste el ícono. En Mac, la app de escritorio necesita además el permiso de «Grabación de pantalla» que macOS pide a cualquier programa que capture la pantalla.</p>
 
     <h2>App de escritorio</h2>
-    <p>La app de escritorio convierte las órdenes del celular en pulsaciones de teclas y movimientos del mouse en tu computadora, y dibuja el puntero en una capa transparente sobre la pantalla. Para mostrarte en el celular qué estás controlando, lee el nombre del programa que está al frente y el título de su ventana; esa información solo viaja a tu celular. En Mac pide el permiso de Accesibilidad, que macOS exige a cualquier app que envíe teclas o mueva el mouse. La app no lee ni guarda el contenido de tus archivos o presentaciones.</p>
+    <p>La app de escritorio convierte las órdenes del celular en pulsaciones de teclas y movimientos del mouse en tu computadora, y dibuja el puntero en una capa transparente sobre la pantalla. Para mostrarte en el celular qué estás controlando, lee el nombre del programa que está al frente y el título de su ventana; esa información solo viaja a tu celular. En Mac pide el permiso de Accesibilidad, que macOS exige a cualquier app que envíe teclas o mueva el mouse. La app no lee ni guarda el contenido de tus archivos o presentaciones; solo captura, si lo permites, la vista previa descrita arriba.</p>
 
     <h2>Texto que escribes</h2>
     <p>Lo que escribes en el teclado del control se envía directamente a tu computadora para insertarlo donde esté el cursor y no se guarda en ningún lugar.</p>
@@ -73,7 +84,7 @@
 
     <h2>Permisos de la extensión</h2>
     <ul>
-      <li><strong>Pestaña activa (<code>activeTab</code>):</strong> ejecutar las órdenes del celular en la pestaña donde pulsas el ícono de Presentazo.</li>
+      <li><strong>Pestaña activa (<code>activeTab</code>):</strong> ejecutar las órdenes del celular y capturar la vista previa en la pestaña donde pulsas el ícono de Presentazo.</li>
       <li><strong>Acceso a otros sitios (opcional):</strong> solo si lo autorizas, para «Seguir la pestaña activa» o controlar una presentación incrustada desde otro sitio.</li>
       <li><strong>Ejecución de scripts (<code>scripting</code>):</strong> activar los scripts de Presentazo solo mientras hay una sesión iniciada.</li>
       <li><strong>Documento en segundo plano (<code>offscreen</code>):</strong> mantener la conexión WebRTC con el celular en segundo plano.</li>

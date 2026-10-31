@@ -249,6 +249,79 @@ try {
   await phone.keyboard.press('Backspace');
   check('Borrar desde el celular', !!(await waitFor(() => hasKey('Backspace'), { timeout: 4000 })));
 
+  // ---------- mapa de la pantalla, tamaños y vista previa
+  const overlayVar = (name) => overlay.evaluate((n) => document.body.style.getPropertyValue(n), name);
+  const mapDot = () => phone.evaluate(() => {
+    const d = document.querySelector('#ptr-hud .map-dot');
+    return { x: parseFloat(d.style.left), y: parseFloat(d.style.top) };
+  });
+  const caps = await phone.evaluate(() => ({ ...document.getElementById('app').dataset }));
+  check('La app declara al celular posición, tamaño y vista previa', caps.pos === 'on' && caps.size === 'on' && caps.thumbSupport === 'on', JSON.stringify({ pos: caps.pos, size: caps.size, thumb: caps.thumbSupport }));
+
+  await phone.click('.tabs [data-tab="pointer"]');
+  await phone.click('#ptr-modes [data-mode="laser"]');
+  await phone.evaluate(() => document.getElementById('air-center').click());
+  check('Centrar: el punto del mapa vuelve al centro de la pantalla', !!(await waitFor(async () => { const d = await mapDot(); return Math.abs(d.x - 50) < 0.6 && Math.abs(d.y - 50) < 0.6; }, { timeout: 4000 })), JSON.stringify(await mapDot()));
+  const pad2 = await (await phone.$('#ptr-pad')).boundingBox();
+  await phone.mouse.move(pad2.x + 60, pad2.y + 60);
+  await phone.mouse.down();
+  await phone.mouse.move(pad2.x + 220, pad2.y + 160, { steps: 10 });
+  await phone.mouse.up();
+  check('El mapa del celular sigue al puntero (hacia abajo y a la derecha)', !!(await waitFor(async () => { const d = await mapDot(); return d.x > 53 && d.y > 53; }, { timeout: 4000 })), JSON.stringify(await mapDot()));
+
+  await phone.click('.tabs [data-tab="mouse"]');
+  const mtp = await (await phone.$('#trackpad')).boundingBox();
+  await phone.mouse.move(mtp.x + 200, mtp.y + 100);
+  await phone.mouse.down();
+  await phone.mouse.move(mtp.x + 40, mtp.y + 100, { steps: 10 });
+  await phone.mouse.up();
+  check('El mapa también aparece en la vista de Mouse', !!(await waitFor(() => phone.evaluate(() => {
+    const e = document.querySelector('#mouse-hud .map-dot');
+    return e.style.left && e.style.left !== '50%' ? true : null;
+  }), { timeout: 4000 })));
+  await phone.click('.tabs [data-tab="pointer"]');
+
+  check('Láser: tamaño normal al conectar (24 px)', (await overlayVar('--s')) === '24px', await overlayVar('--s'));
+  await phone.click('#size-up');
+  await phone.click('#size-up');
+  check('Láser más grande desde el celular (+2 niveles = 34 px)', !!(await waitFor(async () => (await overlayVar('--s')) === '34px', { timeout: 4000 })), await overlayVar('--s'));
+  await phone.click('#ptr-modes [data-mode="spot"]');
+  for (let i = 0; i < 3; i++) await phone.click('#size-up');
+  check('Foco más grande desde el celular (56 vmin)', !!(await waitFor(async () => (await overlayVar('--d')) === '56vmin', { timeout: 4000 })), await overlayVar('--d'));
+  await phone.click('#ptr-modes [data-mode="pen"]');
+  for (let i = 0; i < 3; i++) await phone.click('#size-down');
+  check('Lápiz más fino desde el celular', !!(await waitFor(async () => (await overlayVar('--pr')) === '14.25px', { timeout: 4000 })), await overlayVar('--pr'));
+  await phone.click('#ptr-modes [data-mode="laser"]');
+
+  // Vista previa de la pantalla + memoria de lo que sigue
+  await phone.click('.tabs [data-tab="slides"]');
+  const peekOk = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'ok'), { timeout: 15000 });
+  check('La vista previa muestra lo que está en pantalla', !!peekOk);
+  const thumb = await phone.evaluate(() => {
+    const i = document.getElementById('peek-now');
+    return { shown: !i.hidden && i.src.startsWith('data:image/jpeg;base64,'), w: i.naturalWidth, bytes: i.src.length };
+  });
+  check('La miniatura es un JPEG reducido (≤ 480 px de ancho, ≤ 60 KB)', thumb.shown && thumb.w > 100 && thumb.w <= 480 && thumb.bytes < 60000, JSON.stringify(thumb));
+  const nextKnown = () => phone.evaluate(() => !document.getElementById('peek-next').hidden);
+  check('Sin haber recorrido la presentación, la siguiente aún no se conoce', !(await nextKnown()));
+  await sleep(1500);
+  await phone.click('#next');
+  await sleep(2800);
+  await phone.click('.prev');
+  await sleep(2800);
+  check('Tras ir y volver, aparece la miniatura de la diapositiva siguiente', !!(await waitFor(nextKnown, { timeout: 8000 })));
+  const imgs = await phone.evaluate(() => [document.getElementById('peek-now').src.length, document.getElementById('peek-next').src.length]);
+  check('La miniatura de la siguiente es distinta a la actual', imgs[1] > 0 && imgs[0] !== imgs[1], imgs.join(' vs '));
+  await shot(phone, path.join(OUT, '3b-celular-vista-previa.png'));
+
+  // La vista previa se puede desactivar desde la app
+  await clickPanel('#toggle-settings');
+  await clickPanel('[data-setting="previewEnabled"]');
+  check('Desde Ajustes de la app se desactiva la vista previa (y el celular lo indica)', !!(await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'off' && document.getElementById('peek-msg').textContent.includes('computadora')), { timeout: 5000 })), await phone.evaluate(() => document.getElementById('peek-msg').textContent));
+  await clickPanel('[data-setting="previewEnabled"]');
+  check('Al volver a activarla, la vista previa regresa', !!(await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'ok'), { timeout: 15000 })));
+  await clickPanel('#toggle-settings');
+
   // ---------- qué se controla: programa, pestaña y pantalla
   const hasEntry = (fn) => since().some(fn);
   const optionTitles = () => panel.evaluate(() => [...document.querySelectorAll('#pick-list .option-title')].map((e) => e.textContent));

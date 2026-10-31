@@ -192,6 +192,96 @@ try {
   await deck.screenshot({ path: `${OUT}/e2e-pen.png` });
   check('Trazo de lápiz (captura e2e-pen.png)', true);
 
+  // ---------- mapa de la pantalla, tamaños y vista previa (celular nuevo con la extensión nueva)
+  const hostVar = (name) => deck.evaluate((n) => document.querySelector('mando-overlay')?.style.getPropertyValue(n) || '', name);
+  const mapDot = () => phone.evaluate(() => {
+    const d = document.querySelector('#ptr-hud .map-dot');
+    return { x: parseFloat(d.style.left), y: parseFloat(d.style.top) };
+  });
+  const dataset = () => phone.evaluate(() => ({ ...document.getElementById('app').dataset }));
+  const caps = await dataset();
+  check('La extensión declara al celular posición, tamaño y vista previa', caps.pos === 'on' && caps.size === 'on' && caps.thumbSupport === 'on', JSON.stringify({ pos: caps.pos, size: caps.size, thumb: caps.thumbSupport }));
+
+  await phone.click('.tabs [data-tab="pointer"]');
+  await phone.click('#ptr-modes [data-mode="laser"]');
+  const swCmd = (c) => sw({ type: 'cmd', cmd: c });
+  await swCmd({ t: 'ptr', a: 'center' });
+  ok = await waitFor(async () => { const d = await mapDot(); return Math.abs(d.x - 50) < 0.6 && Math.abs(d.y - 50) < 0.6; }, { timeout: 4000 });
+  check('Centrar: el punto del mapa vuelve al centro de la pantalla', !!ok, JSON.stringify(await mapDot()));
+  await swCmd({ t: 'ptr', a: 'move', dx: 0.1, dy: 0.05 }); // 10 % del ancho a la derecha y 5 % del ancho hacia abajo
+  ok = await waitFor(async () => { const d = await mapDot(); return Math.abs(d.x - 60) < 0.6 && Math.abs(d.y - 58) < 0.6; }, { timeout: 4000 });
+  check('El mapa del celular sigue al puntero real (60 %, 58 %)', !!ok, JSON.stringify(await mapDot()));
+  await phone.click('.tabs [data-tab="mouse"]');
+  await swCmd({ t: 'mouse', a: 'move', dx: -0.2, dy: 0 });
+  ok = await waitFor(async () => { const d = await phone.evaluate(() => { const e = document.querySelector('#mouse-hud .map-dot'); return { x: parseFloat(e.style.left) }; }); return d.x < 45; }, { timeout: 4000 });
+  check('El mapa también aparece en la vista de Mouse', !!ok);
+  await phone.click('.tabs [data-tab="pointer"]');
+
+  check('Láser: tamaño normal al conectar (24 px)', (await hostVar('--s')) === '24px', await hostVar('--s'));
+  await phone.click('#size-up');
+  await phone.click('#size-up');
+  ok = await waitFor(async () => (await hostVar('--s')) === '34px', { timeout: 4000 });
+  check('Láser más grande desde el celular (+2 niveles = 34 px)', !!ok, await hostVar('--s'));
+  await phone.click('#ptr-modes [data-mode="spot"]');
+  for (let i = 0; i < 3; i++) await phone.click('#size-up');
+  ok = await waitFor(async () => (await hostVar('--d')) === '56vmin', { timeout: 4000 });
+  check('Foco más grande desde el celular (56 vmin)', !!ok, await hostVar('--d'));
+  await phone.click('#ptr-modes [data-mode="pen"]');
+  for (let i = 0; i < 3; i++) await phone.click('#size-down');
+  ok = await waitFor(async () => (await hostVar('--pr')) === '14.25px', { timeout: 4000 });
+  check('Lápiz más fino desde el celular', !!ok, await hostVar('--pr'));
+  check('Los tamaños de cada herramienta son independientes', (await hostVar('--s')) === '34px' && (await hostVar('--d')) === '56vmin');
+  await phone.click('#ptr-modes [data-mode="laser"]');
+
+  // Vista previa de lo que se presenta + memoria de lo que sigue
+  await deck.evaluate(() => { document.getElementById('log').style.visibility = 'hidden'; });
+  await phone.click('.tabs [data-tab="slides"]');
+  const peekOk = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'ok'), { timeout: 20000 });
+  check('La vista previa muestra lo que está en pantalla', !!peekOk, await phone.evaluate(() => document.getElementById('peek').dataset.state + ' ' + document.getElementById('peek-msg').textContent));
+  const thumb = await phone.evaluate(() => {
+    const i = document.getElementById('peek-now');
+    return { shown: !i.hidden && i.src.startsWith('data:image/jpeg;base64,'), w: i.naturalWidth, bytes: i.src.length };
+  });
+  check('La miniatura es un JPEG reducido (≤ 480 px de ancho, ≤ 60 KB)', thumb.shown && thumb.w > 100 && thumb.w <= 480 && thumb.bytes < 60000, JSON.stringify(thumb));
+  await phone.screenshot({ path: `${OUT}/e2e-celular-vista-previa.png` });
+
+  const nextKnown = () => phone.evaluate(() => !document.getElementById('peek-next').hidden);
+  check('Sin haber recorrido la presentación, la siguiente aún no se conoce', !(await nextKnown()));
+  const here = await slideText();
+  await sleep(1500);
+  await phone.click('#next');
+  await waitFor(async () => (await slideText()) !== here, { timeout: 5000 });
+  await sleep(2600); // capturas a 0,35 s y 1,25 s; la memoria usa la estable
+  const moved = await phone.evaluate(() => document.getElementById('peek-now').src.length);
+  await phone.click('.prev');
+  await waitFor(async () => (await slideText()) === here, { timeout: 5000 });
+  ok = await waitFor(nextKnown, { timeout: 8000 });
+  check('Tras ir y volver, aparece la miniatura de la diapositiva siguiente', !!ok);
+  const nextImg = await phone.evaluate(() => document.getElementById('peek-next').src.length);
+  check('La miniatura de la siguiente es distinta a la actual', ok && nextImg > 0 && nextImg !== (await phone.evaluate(() => document.getElementById('peek-now').src.length)), `${nextImg} vs ${moved}`);
+  await phone.screenshot({ path: `${OUT}/e2e-celular-siguiente.png` });
+
+  // La vista previa se puede desactivar desde el celular y desde la computadora
+  await phone.evaluate(() => { const c = document.getElementById('preview'); c.checked = false; c.dispatchEvent(new Event('change')); });
+  ok = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'off'), { timeout: 3000 });
+  check('Desde el celular se desactiva la vista previa', !!ok);
+  await phone.evaluate(() => { const c = document.getElementById('preview'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'ok'), { timeout: 15000 });
+  await ctl.evaluate(async () => {
+    const { settings } = await chrome.storage.sync.get('settings');
+    await chrome.storage.sync.set({ settings: { ...settings, previewEnabled: false } });
+  });
+  ok = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'off' && document.getElementById('peek-msg').textContent.includes('computadora')), { timeout: 5000 });
+  check('Desde Ajustes de la extensión se desactiva la vista previa (y el celular lo indica)', !!ok, await phone.evaluate(() => document.getElementById('peek-msg').textContent));
+  await ctl.evaluate(async () => {
+    const { settings } = await chrome.storage.sync.get('settings');
+    await chrome.storage.sync.set({ settings: { ...settings, previewEnabled: true } });
+  });
+  ok = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'ok'), { timeout: 15000 });
+  check('Al volver a activarla, la vista previa regresa', !!ok);
+  await deck.evaluate(() => { document.getElementById('log').style.visibility = 'visible'; });
+  await phone.click('.tabs [data-tab="pointer"]');
+
   // ---------- mouse remoto: clic preciso en el botón usando órdenes directas
   const box = await deck.evaluate(() => {
     const r = document.getElementById('btn').getBoundingClientRect();

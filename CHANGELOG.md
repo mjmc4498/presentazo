@@ -4,6 +4,27 @@ Todas las versiones de Presentazo: la extensión de Chrome y la app de escritori
 extensión, el número de versión de cada paquete debe ser mayor que el anterior para que
 la Chrome Web Store lo acepte.
 
+## Extensión 1.2.0 y app de escritorio 1.1.0 (31 de octubre de 2026)
+
+Las dos versiones traen lo mismo, porque comparten el control del celular.
+
+- **Mapa de la pantalla en el celular.** En Puntero y en Mouse se ve una miniatura de la pantalla
+  con un punto que sigue al puntero real, con la forma y el tamaño de la herramienta elegida.
+- **Tamaño del láser, el foco y el lápiz** desde el celular, con los botones **+ y −** (7 niveles;
+  mantener pulsado repite). Cada herramienta recuerda su tamaño.
+- **Vista previa en el celular:** en Diapositivas aparece lo que está en pantalla y la diapositiva
+  siguiente. Presentazo aprende cuál es la siguiente viendo qué aparece después de cada
+  «Siguiente» (un programa cualquiera no lo informa), así que tras recorrer la presentación una vez
+  la miniatura queda disponible. La extensión captura la pestaña con el permiso `activeTab` (sin
+  permisos nuevos) y la app, la pantalla donde se presenta (en Mac pide «Grabación de pantalla»).
+  Se puede desactivar en el celular y en Ajustes de la extensión o de la app.
+- **Modo aire renovado:** funciona con el celular plano, inclinado o de pie (antes solo plano),
+  filtra el temblor de la mano, es más preciso al moverse despacio y recorre la pantalla rápido
+  al moverse rápido. Nuevo botón **Centrar** y sensibilidad propia.
+- Cada computadora declara al celular lo que sabe hacer: con una versión anterior de la extensión o
+  de la app, el celular oculta lo nuevo en lugar de mostrar controles que no funcionan.
+- Política de privacidad actualizada con la vista previa.
+
 ## App de escritorio 1.0.1 (17 de octubre de 2026)
 
 - El repositorio ahora se llama `presentazo`: el control del celular se abre desde

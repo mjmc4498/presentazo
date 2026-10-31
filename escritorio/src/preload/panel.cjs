@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('presentazo', {
   kick: (id) => ipcRenderer.invoke('panel:kick', String(id)),
   setSettings: (patch) => ipcRenderer.invoke('panel:settings', patch),
   askPermission: () => ipcRenderer.invoke('panel:permission'),
+  askScreenPermission: () => ipcRenderer.invoke('panel:screen-permission'),
   copyLink: () => ipcRenderer.invoke('panel:copy'),
   open: (url) => ipcRenderer.invoke('panel:open', String(url)),
   sources: (kind) => ipcRenderer.invoke('panel:sources', String(kind)),

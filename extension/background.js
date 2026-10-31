@@ -19,8 +19,10 @@ const settingsReady = getSettings().then((s) => { settings = s; });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync' || !changes.settings) return;
   const before = settings.followActiveTab;
+  const previewBefore = settings.previewEnabled;
   settings = { ...DEFAULT_SETTINGS, ...(changes.settings.newValue || {}) };
   if (before !== settings.followActiveTab) retarget();
+  if (previewBefore !== settings.previewEnabled) broadcastCaps();
 });
 
 // ---------------------------------------------------------------- estado
@@ -138,6 +140,29 @@ async function unregisterScripts() {
   if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: existing.map((s) => s.id) });
 }
 
+// Tamaños del láser, el foco y el lápiz elegidos desde el celular. Se recuerdan para
+// aplicarlos también a otra pestaña (p. ej. con «Seguir la pestaña activa») y para
+// informárselos a un celular que se conecta después.
+const sizeOverrides = {};
+const BASE_LEVEL = { s: 2, m: 4, l: 6 };
+
+function currentLevels() {
+  return {
+    laser: sizeOverrides.laser ?? BASE_LEVEL[settings.laserSize] ?? 4,
+    spot: sizeOverrides.spot ?? BASE_LEVEL[settings.spotSize] ?? 4,
+    pen: sizeOverrides.pen ?? 4,
+  };
+}
+
+function capabilities() {
+  // pos y size: siempre. thumb: true (activa), false (desactivada en Ajustes).
+  return { pos: true, size: true, thumb: settings.previewEnabled !== false };
+}
+
+function broadcastCaps() {
+  chrome.runtime.sendMessage({ to: 'offscreen', type: 'broadcast', msg: { t: 'caps', caps: capabilities(), levels: currentLevels() } }).catch(() => {});
+}
+
 const injecting = new Map();
 // Pestañas donde no se pueden inyectar los scripts: 'restricted' (páginas de
 // Chrome) o 'access' (hay que volver a pulsar el ícono en esa pestaña).
@@ -154,6 +179,9 @@ function inject(tabId) {
             world: s.world,
             injectImmediately: true,
           });
+        }
+        for (const [which, level] of Object.entries(sizeOverrides)) {
+          chrome.tabs.sendMessage(tabId, { mando: { t: 'size', which, level } }, { frameId: 0 }).catch(() => {});
         }
         return true;
       } catch {
@@ -332,6 +360,7 @@ let lastRestrictedNotice = 0;
 async function handleCommand(cmd) {
   const tabId = await targetTabId();
   if (tabId == null) return { reply: { t: 'error', error: 'no-target' } };
+  if (cmd.t === 'size') sizeOverrides[cmd.which] = cmd.level;
 
   if (cmd.t === 'nav') {
     if (cmd.a === 'fullscreen') {
@@ -359,6 +388,66 @@ async function handleCommand(cmd) {
   }
   if (res?.state) return { reply: { t: 'state', ...res.state } };
   return null;
+}
+
+// ---------------------------------------------------------------- vista previa
+
+// Captura la pestaña controlada y la reduce (≈480 px de ancho, ≈30 KB) para enviarla al celular.
+// chrome.tabs.captureVisibleTab funciona con el permiso activeTab: solo se puede capturar la
+// pestaña donde el usuario pulsó el ícono de Presentazo, y solo si está a la vista.
+const PREVIEW_WIDTH = 480;
+const PREVIEW_MAX_BYTES = 42000;
+
+async function shrink(dataUrl) {
+  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const scale = Math.min(1, PREVIEW_WIDTH / bitmap.width);
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = new OffscreenCanvas(w, h);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+  const result = { w: bitmap.width, h: bitmap.height };
+  bitmap.close?.();
+  let blob = null;
+  for (const quality of [0.62, 0.5, 0.4, 0.3]) {
+    blob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+    if (blob.size <= PREVIEW_MAX_BYTES) break;
+  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { ...result, img: `data:image/jpeg;base64,${btoa(binary)}` };
+}
+
+// Chrome permite como mucho 2 capturas por segundo: se espacian y, si aun así falla una, se reintenta.
+const CAPTURE_GAP_MS = 650;
+let lastCaptureAt = 0;
+let captureQueue = Promise.resolve();
+
+function capturePreview() {
+  const job = captureQueue.then(doCapture, doCapture);
+  captureQueue = job.catch(() => {});
+  return job;
+}
+
+async function doCapture() {
+  await settingsReady;
+  if (settings.previewEnabled === false) return { error: 'off' };
+  const tabId = await targetTabId();
+  const tab = tabId == null ? null : await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab?.active) return { error: 'inactive' };
+  if (blockedTabs.get(tab.id) === 'access' || !tab.url) return { error: 'access' };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const wait = CAPTURE_GAP_MS - (Date.now() - lastCaptureAt);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastCaptureAt = Date.now();
+    try {
+      const shot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 70 });
+      return await shrink(shot);
+    } catch (err) {
+      if (/activeTab|all_urls|permission|cannot access/i.test(String(err?.message || err))) return { error: 'access' };
+    }
+  }
+  return { error: 'fail' };
 }
 
 // ---------------------------------------------------------------- enrutamiento a iframes
@@ -410,6 +499,7 @@ async function startSession(tabId) {
 }
 
 async function stopSession() {
+  for (const k of Object.keys(sizeOverrides)) delete sizeOverrides[k];
   await closeOffscreen('stopped');
   await unregisterScripts().catch(() => {});
   const s = await loadState();
@@ -487,7 +577,8 @@ const handlers = {
       }
     }
   },
-  welcome: () => targetInfo(),
+  welcome: async () => ({ target: await targetInfo(), caps: capabilities(), levels: currentLevels() }),
+  capture: () => capturePreview(),
   cmd: (msg) => handleCommand(msg.cmd),
 
   // scripts de contenido

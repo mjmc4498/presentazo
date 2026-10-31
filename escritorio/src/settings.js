@@ -14,6 +14,7 @@ export const DEFAULTS = {
   newCodeEachSession: true,
   hideOnConnect: true,
   openAtLogin: false,
+  previewEnabled: true,
 };
 
 const COLORS = ['#FF3B30', '#34C759', '#0A84FF', '#FFD60A', '#FF2D92'];
@@ -29,7 +30,7 @@ function sanitize(raw) {
   if (SIZES.includes(raw.spotSize)) s.spotSize = raw.spotSize;
   if (NEXT_KEYS.includes(raw.nextKey)) s.nextKey = raw.nextKey;
   if (typeof raw.display === 'string' && /^(auto|\d{1,20})$/.test(raw.display)) s.display = raw.display;
-  for (const k of ['clearInkOnSlide', 'showToasts', 'newCodeEachSession', 'hideOnConnect', 'openAtLogin']) {
+  for (const k of ['clearInkOnSlide', 'showToasts', 'newCodeEachSession', 'hideOnConnect', 'openAtLogin', 'previewEnabled']) {
     if (typeof raw[k] === 'boolean') s[k] = raw[k];
   }
   return s;

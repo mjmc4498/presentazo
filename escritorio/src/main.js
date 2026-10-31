@@ -7,7 +7,7 @@
 // Keynote, un PDF, el navegador…) con el módulo nativo de cada sistema.
 
 import {
-  app, BrowserWindow, Menu, Tray, clipboard, ipcMain, nativeImage, nativeTheme, net, protocol,
+  app, BrowserWindow, Menu, Tray, clipboard, desktopCapturer, ipcMain, nativeImage, nativeTheme, net, protocol,
   screen, session, shell, systemPreferences,
 } from 'electron';
 import crypto from 'node:crypto';
@@ -69,6 +69,7 @@ let black = false;
 let fullscreen = false;
 let pointerMode = 'laser';
 let lastTrusted = null;
+let lastScreenAccess = null;
 
 // Qué se controla: 'auto' (lo que esté al frente), 'screen' (una pantalla),
 // 'window' (un programa) o 'tab' (una pestaña del navegador).
@@ -76,6 +77,49 @@ let target = { kind: 'auto' };
 const sources = { windows: [], tabs: [] };
 const iconCache = new Map();
 let tabRetryAt = 0;
+
+// Tamaños del láser, el foco y el lápiz elegidos desde el celular (niveles 1 a 7).
+const sizeOverrides = {};
+const BASE_LEVEL = { s: 2, m: 4, l: 6 };
+
+function currentLevels() {
+  return {
+    laser: sizeOverrides.laser ?? BASE_LEVEL[store.settings.laserSize] ?? 4,
+    spot: sizeOverrides.spot ?? BASE_LEVEL[store.settings.spotSize] ?? 4,
+    pen: sizeOverrides.pen ?? 4,
+  };
+}
+
+// Lo que esta versión sabe hacer; el celular muestra solo lo que la computadora declara.
+// thumb: true (activa) o false (desactivada en Ajustes).
+function capabilities() {
+  return { pos: true, size: true, thumb: store.settings.previewEnabled !== false };
+}
+
+function broadcastCaps() {
+  toConnection({ type: 'broadcast', msg: { t: 'caps', caps: capabilities(), levels: currentLevels() } });
+}
+
+// Posición del puntero para el mapa del celular (como fracción de la pantalla), sin saturar el canal.
+let posSentAt = 0;
+let posTimer = 0;
+let posPending = null;
+function flushPos() {
+  if (!posPending) return;
+  const msg = { t: 'pos', ...posPending };
+  posPending = null;
+  posSentAt = Date.now();
+  toConnection({ type: 'broadcast', msg });
+}
+function sendPos(p) {
+  posPending = p;
+  const wait = 45 - (Date.now() - posSentAt);
+  if (wait > 0) {
+    if (!posTimer) posTimer = setTimeout(() => { posTimer = 0; flushPos(); }, wait);
+    return;
+  }
+  flushPos();
+}
 
 // ---------------------------------------------------------------- identidad
 
@@ -405,6 +449,12 @@ async function nav(action) {
   if (!ensureTrusted()) return denied();
   await ensureTarget();
 
+  if (TESTING) {
+    if (action === 'next') testSlide += 1;
+    else if (action === 'prev') testSlide = Math.max(1, testSlide - 1);
+    else if (action === 'first') testSlide = 1;
+  }
+
   switch (action) {
     case 'next':
     case 'prev':
@@ -470,6 +520,19 @@ function moveMouse(dx, dy) {
   cursor = { x, y };
   cursorAt = Date.now();
   input.moveTo(x, y, dragging);
+  reportMouse();
+}
+
+// El mapa del celular muestra la pantalla donde está el cursor real.
+function reportMouse() {
+  const p = cursorPosition();
+  const { bounds: b } = screen.getDisplayNearestPoint({ x: Math.round(p.x), y: Math.round(p.y) });
+  sendPos({
+    x: +clamp((p.x - b.x) / b.width, 0, 1).toFixed(4),
+    y: +clamp((p.y - b.y) / b.height, 0, 1).toFixed(4),
+    w: b.width,
+    h: b.height,
+  });
 }
 
 function mouse(cmd) {
@@ -493,6 +556,11 @@ async function handleCommand(cmd) {
     case 'mode':
       pointerMode = cmd.mode;
       overlayCmd(cmd, { show: false });
+      if (cmd.mode === 'mouse') reportMouse();
+      return null;
+    case 'size':
+      sizeOverrides[cmd.which] = cmd.level;
+      overlayCmd(cmd, { show: false });
       return null;
     case 'ptr':
       // El láser y el foco aparecen al tocar; el lápiz muestra su punta al mover.
@@ -515,6 +583,71 @@ async function handleCommand(cmd) {
       return (await pressKeys(() => { for (let i = 0; i < cmd.n; i++) input.key('Backspace'); })) ? null : denied();
     default:
       return null;
+  }
+}
+
+// ---------------------------------------------------------------- vista previa de la pantalla
+
+const PREVIEW_WIDTH = 480;
+const PREVIEW_MAX_BYTES = 42000;
+let testSlide = 1; // solo en las pruebas: número de diapositiva simulada
+
+// Estado del permiso de «Grabación de pantalla» (macOS). En Windows no hace falta.
+function screenAccess() {
+  if (!isMac || TESTING) return 'granted';
+  try { return systemPreferences.getMediaAccessStatus('screen'); } catch { return 'granted'; }
+}
+
+function jpegOf(image) {
+  let jpeg = null;
+  for (const quality of [62, 50, 40, 30]) {
+    jpeg = image.toJPEG(quality);
+    if (jpeg.length <= PREVIEW_MAX_BYTES) break;
+  }
+  return `data:image/jpeg;base64,${jpeg.toString('base64')}`;
+}
+
+// Imagen simulada para las pruebas: cada diapositiva tiene su color.
+function testScreen() {
+  const w = 480;
+  const h = 270;
+  const hue = (testSlide * 57) % 360;
+  const f = (n) => {
+    const k = (n + hue / 30) % 12;
+    return Math.round(255 * (0.85 - 0.7 * 0.15 * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+  };
+  const [r, g, b] = [f(0), f(8), f(4)];
+  const buf = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    const bar = (i % w) > 340 && (i % w) < 400 && Math.floor(i / w) > 120;
+    buf[i * 4] = bar ? 20 : b;
+    buf[i * 4 + 1] = bar ? 20 : g;
+    buf[i * 4 + 2] = bar ? 20 : r;
+    buf[i * 4 + 3] = 255;
+  }
+  return { img: jpegOf(nativeImage.createFromBitmap(buf, { width: w, height: h })), w: 1920, h: 1080 };
+}
+
+// Captura reducida de la pantalla donde se presenta (la misma donde aparece el puntero).
+async function captureScreen() {
+  if (store.settings.previewEnabled === false) return { error: 'off' };
+  if (TESTING) return testScreen();
+  // Sin el permiso no se captura nada. En particular, con el permiso aún sin decidir, pedir una
+  // captura abriría el aviso de macOS en plena presentación y la dejaría esperando: ese aviso
+  // solo sale cuando el usuario pulsa «Dar permiso» en el panel.
+  if (screenAccess() !== 'granted') return { error: 'permission' };
+  try {
+    const display = pointerDisplay();
+    const { width, height } = display.size;
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: PREVIEW_WIDTH, height: Math.round((PREVIEW_WIDTH * height) / width) },
+    });
+    const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+    if (!source || source.thumbnail.isEmpty()) return { error: 'fail' };
+    return { img: jpegOf(source.thumbnail), w: width, h: height };
+  } catch {
+    return { error: 'fail' };
   }
 }
 
@@ -551,7 +684,8 @@ function registerConnectionIpc() {
     refresh();
   });
 
-  ipcMain.handle('conn:welcome', (event) => (ok(event) ? targetInfo() : null));
+  ipcMain.handle('conn:welcome', (event) => (ok(event) ? { target: targetInfo(), caps: capabilities(), levels: currentLevels() } : null));
+  ipcMain.handle('conn:capture', (event) => (ok(event) ? captureScreen() : null));
 
   ipcMain.handle('conn:cmd', async (event, cmd) => {
     if (!ok(event) || !cmd || typeof cmd.t !== 'string') return null;
@@ -574,7 +708,16 @@ function registerOverlayIpc() {
     overlayReady = true;
     const { laserColor, laserSize, spotSize } = store.settings;
     overlay.webContents.send('overlay:cmd', { t: 'settings', laserColor, laserSize, spotSize });
+    for (const [which, level] of Object.entries(sizeOverrides)) overlay.webContents.send('overlay:cmd', { t: 'size', which, level });
     for (const cmd of overlayQueue.splice(0)) overlay.webContents.send('overlay:cmd', cmd);
+  });
+  ipcMain.on('overlay:pos', (event, p) => {
+    // Con el mouse remoto manda la posición del cursor real, no la de la capa.
+    if (!fromWindow(overlay)(event) || pointerMode === 'mouse' || !p) return;
+    const w = Number(p.w);
+    const h = Number(p.h);
+    if (!(w > 0 && h > 0)) return;
+    sendPos({ x: clamp(Number(p.x) || 0, 0, 1), y: clamp(Number(p.y) || 0, 0, 1), w: Math.round(w), h: Math.round(h) });
   });
   ipcMain.on('overlay:idle', (event) => {
     if (fromWindow(overlay)(event) && overlay.isVisible()) overlay.hide();
@@ -599,6 +742,7 @@ function snapshot() {
     selection: selectionView(),
     packaged: app.isPackaged,
     loginError,
+    screenAccess: screenAccess(),
   };
 }
 
@@ -783,8 +927,21 @@ function registerPanelIpc() {
       if (loginError) store.setSettings({ openAtLogin: before.openAtLogin });
     }
     if (before.laserColor !== next.laserColor || before.laserSize !== next.laserSize || before.spotSize !== next.spotSize) overlaySettings();
+    if (before.previewEnabled !== next.previewEnabled || before.laserSize !== next.laserSize || before.spotSize !== next.spotSize) broadcastCaps();
     refresh();
     return snapshot();
+  });
+  // La vista previa necesita el permiso de «Grabación de pantalla» de macOS.
+  ipcMain.handle('panel:screen-permission', (event) => {
+    if (!ok(event) || !isMac) return false;
+    const status = screenAccess();
+    if (status === 'not-determined') {
+      // Pedir una captura hace que macOS muestre su aviso y deje a Presentazo en la lista.
+      desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } }).catch(() => {});
+    } else if (status !== 'granted') {
+      shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+    }
+    return status === 'granted';
   });
   ipcMain.handle('panel:permission', (event) => {
     if (!ok(event) || !isMac) return false;
@@ -953,6 +1110,11 @@ app.whenReady().then(async () => {
   // El permiso de Accesibilidad se puede dar mientras la app está abierta.
   setInterval(() => {
     const trusted = input.trusted();
+    const access = screenAccess();
+    if (access !== lastScreenAccess) {
+      lastScreenAccess = access;
+      refresh();
+    }
     if (trusted !== lastTrusted) {
       lastTrusted = trusted;
       refresh();

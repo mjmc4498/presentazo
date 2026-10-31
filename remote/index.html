@@ -53,6 +53,17 @@
             <span data-t="exit"></span>
           </button>
         </div>
+        <div class="peek" id="peek" data-state="off">
+          <figure class="peek-card peek-now">
+            <div class="peek-frame"><img id="peek-now" alt="" hidden><span class="peek-empty" id="peek-now-empty"></span></div>
+            <figcaption data-t="peekNow"></figcaption>
+          </figure>
+          <figure class="peek-card peek-next">
+            <div class="peek-frame"><img id="peek-next" alt="" hidden><span class="peek-empty" id="peek-next-empty"></span></div>
+            <figcaption data-t="peekNext"></figcaption>
+          </figure>
+          <p class="peek-msg" id="peek-msg"></p>
+        </div>
         <button class="prev" type="button" data-nav="prev">
           <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
           <span data-t="previous"></span>
@@ -70,6 +81,20 @@
           <button type="button" data-mode="laser" data-t="laser"></button>
           <button type="button" data-mode="spot" data-t="spotlight"></button>
           <button type="button" data-mode="pen" data-t="pen"></button>
+        </div>
+        <div class="hud" id="ptr-hud">
+          <div class="screen-map" data-map data-aria="mapLabel">
+            <div class="map-screen"><img class="map-img" alt="" hidden><i class="map-dot"></i></div>
+          </div>
+          <div class="sizer" id="sizer">
+            <button type="button" class="step" id="size-up" data-t-aria="sizeUp">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <output class="size-level" id="size-level"></output>
+            <button type="button" class="step" id="size-down" data-t-aria="sizeDown">
+              <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+            </button>
+          </div>
         </div>
         <div class="pad" id="ptr-pad">
           <div class="pad-hint">
@@ -93,6 +118,16 @@
             <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
           </button>
         </div>
+        <div class="air-tools" id="air-tools">
+          <button type="button" class="pill" id="air-center">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>
+            <span data-t="center"></span>
+          </button>
+          <label class="air-sens">
+            <span data-t="airSens"></span>
+            <input type="range" id="air-sens" min="0.4" max="2.5" step="0.1" data-t-aria="airSens">
+          </label>
+        </div>
         <div class="mini-nav">
           <button type="button" data-nav="prev" data-t-aria="previous">
             <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
@@ -109,6 +144,11 @@
 
       <!-- Mouse -->
       <section class="view" data-view="mouse">
+        <div class="hud hud-solo" id="mouse-hud">
+          <div class="screen-map" data-map data-tool="mouse" data-aria="mapLabel">
+            <div class="map-screen"><img class="map-img" alt="" hidden><i class="map-dot"></i></div>
+          </div>
+        </div>
         <div class="pad-wrap">
           <div class="pad" id="trackpad">
             <div class="pad-hint">
@@ -196,6 +236,10 @@
           <span data-t="keepAwake"></span>
           <input type="checkbox" class="switch" id="wake">
         </label>
+        <label class="field field-row" id="preview-field">
+          <span class="field-text"><span data-t="previewSetting"></span><small class="muted" data-t="previewSettingSub"></small></span>
+          <input type="checkbox" class="switch" id="preview">
+        </label>
         <div class="field field-row muted">
           <span data-t="latency"></span>
           <span id="latency">—</span>
@@ -210,6 +254,7 @@
   </div>
 
   <script src="peerjs.min.js"></script>
+  <script src="air.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

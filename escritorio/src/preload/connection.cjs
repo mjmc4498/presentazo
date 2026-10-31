@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('presentazo', {
   status: (status, error = null) => ipcRenderer.send('conn:status', { status, error }),
   devices: (payload) => ipcRenderer.send('conn:devices', payload),
   welcome: () => ipcRenderer.invoke('conn:welcome'),
+  capture: () => ipcRenderer.invoke('conn:capture'),
   command: (cmd) => ipcRenderer.invoke('conn:cmd', cmd),
   onMain: (fn) => ipcRenderer.on('conn:main', (_e, msg) => fn(msg)),
 });

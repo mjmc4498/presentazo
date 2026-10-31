@@ -4,5 +4,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('presentazo', {
   onCommand: (fn) => ipcRenderer.on('overlay:cmd', (_e, cmd) => fn(cmd)),
   ready: () => ipcRenderer.send('overlay:ready'),
+  pos: (p) => ipcRenderer.send('overlay:pos', p),
   idle: () => ipcRenderer.send('overlay:idle'),
 });

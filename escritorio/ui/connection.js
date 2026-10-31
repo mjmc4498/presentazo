@@ -18,6 +18,17 @@ let stopped = false;
 let retryTimer = 0;
 let retryDelay = 1000;
 
+// Vista previa: mientras algún celular la pida, se captura la pantalla cada pocos segundos
+// y tras cada cambio de diapositiva, y solo se envía si la imagen cambió.
+const PREVIEW_EVERY_MS = 2500;
+let previewTimer = 0;
+let capturing = false;
+let lastThumb = null;
+let lastThumbKey = '';
+let lastThumbError = '';
+let captureFailures = 0;
+let thumbSeq = 0;
+
 function setStatus(status, error = null) {
   bridge.status(status, error);
 }
@@ -109,8 +120,8 @@ function onConnection(conn) {
         device.authed = true;
         device.name = deviceName(msg.name);
         devices.set(device.id, device);
-        const target = await bridge.welcome();
-        send(conn, { t: 'welcome', target, v: 1 });
+        const hello = await bridge.welcome();
+        send(conn, { t: 'welcome', target: hello?.target ?? null, caps: hello?.caps, levels: hello?.levels, v: 2 });
         bridge.devices({ event: 'joined', device: { id: device.id, name: device.name }, devices: publicDevices() });
       } else {
         send(conn, { t: 'denied' });
@@ -123,8 +134,19 @@ function onConnection(conn) {
       send(conn, { t: 'pong', ts: msg.ts });
       return;
     }
+    if (msg.t === 'preview') {
+      device.preview = msg.on === true;
+      if (device.preview) {
+        if (lastThumb) send(conn, thumbMessage(lastThumb));
+        else if (lastThumbError) send(conn, { t: 'thumb', error: lastThumbError });
+      }
+      updatePreview();
+      return;
+    }
     const cmd = clean(msg);
     if (!cmd) return;
+    // Tras cambiar de diapositiva se actualiza la vista previa (la transición tarda un momento).
+    if (cmd.t === 'nav' || (cmd.t === 'key' && cmd.k !== ' ') || (cmd.t === 'mouse' && cmd.a === 'click')) bumpPreview();
     const res = await bridge.command(cmd);
     if (res?.reply) send(conn, res.reply);
   });
@@ -133,6 +155,7 @@ function onConnection(conn) {
     clearTimeout(authTimer);
     if (devices.delete(device.id)) {
       bridge.devices({ event: 'left', device: { id: device.id, name: device.name }, devices: publicDevices() });
+      updatePreview();
     }
   });
   conn.on('error', () => {});
@@ -162,8 +185,12 @@ function clean(m) {
       return NAV.has(m.a) ? { t: 'nav', a: m.a } : null;
     case 'mode':
       return MODES.has(m.mode) ? { t: 'mode', mode: m.mode } : null;
+    case 'size':
+      return ['laser', 'spot', 'pen'].includes(m.which)
+        ? { t: 'size', which: m.which, level: Math.max(1, Math.min(7, Math.round(num(m.level, 7)) || 4)) }
+        : null;
     case 'ptr':
-      return ['down', 'move', 'up'].includes(m.a)
+      return ['down', 'move', 'up', 'center'].includes(m.a)
         ? { t: 'ptr', a: m.a, dx: num(m.dx, 4), dy: num(m.dy, 4), ink: m.ink === true }
         : null;
     case 'mouse':
@@ -186,6 +213,67 @@ function clean(m) {
   }
 }
 
+// ---------------------------------------------------------------- vista previa
+
+const thumbMessage = (t) => ({ t: 'thumb', n: thumbSeq, w: t.w, h: t.h, img: t.img });
+const previewDevices = () => [...devices.values()].filter((d) => d.preview);
+
+function updatePreview() {
+  if (previewDevices().length) {
+    if (!previewTimer) {
+      previewTimer = setInterval(capture, PREVIEW_EVERY_MS);
+      capture();
+    } else if (!lastThumb) {
+      capture();
+    }
+  } else {
+    clearInterval(previewTimer);
+    previewTimer = 0;
+  }
+}
+
+// Pide al proceso principal una captura reducida de la pantalla.
+async function capture() {
+  if (capturing || !previewDevices().length) return;
+  capturing = true;
+  try {
+    const res = await bridge.capture();
+    if (!res) return;
+    if (res.error) {
+      // Un fallo suelto es normal (pantalla ocupada): se avisa solo si se repite, y únicamente
+      // cuando cambia el motivo, no cada 2,5 s.
+      if (res.error === 'fail' && ++captureFailures < 3) return;
+      if (res.error !== lastThumbError) {
+        lastThumbError = res.error;
+        for (const d of previewDevices()) send(d.conn, { t: 'thumb', error: res.error });
+      }
+      return;
+    }
+    lastThumbError = '';
+    captureFailures = 0;
+    const key = `${res.img.length}:${res.img.slice(-48)}`;
+    if (key === lastThumbKey) {
+      // La pantalla no cambió: no se reenvía la imagen, solo se confirma que sigue igual
+      // (el celular necesita saber que la diapositiva ya quedó estable).
+      for (const d of previewDevices()) send(d.conn, { t: 'thumb', same: true, n: thumbSeq });
+      return;
+    }
+    lastThumbKey = key;
+    lastThumb = res;
+    thumbSeq += 1;
+    for (const d of previewDevices()) send(d.conn, thumbMessage(res));
+  } finally {
+    capturing = false;
+  }
+}
+
+// Una captura a los 0,35 s (la transición empieza) y otra a los 1,25 s (la diapositiva ya quedó).
+function bumpPreview() {
+  if (!previewDevices().length) return;
+  setTimeout(capture, 350);
+  setTimeout(capture, 1250);
+}
+
 // ---------------------------------------------------------------- mensajes del proceso principal
 
 bridge.onMain((msg) => {
@@ -204,6 +292,7 @@ bridge.onMain((msg) => {
     case 'stop':
       stopped = true;
       clearTimeout(retryTimer);
+      clearInterval(previewTimer);
       for (const d of devices.values()) send(d.conn, { t: 'bye', reason: msg.reason || 'stopped' });
       setTimeout(() => { try { peer?.destroy(); } catch {} }, 250);
       break;

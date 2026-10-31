@@ -10,9 +10,9 @@ Cada sistema tiene dos versiones: **instalador** (la app se instala como cualqui
 
 | Computadora | Instalador | Portable |
 |---|---|---|
-| Windows 10 u 11 | `windows/instalador/Presentazo-1.0.1-Windows-Instalador.exe` | `windows/portable/Presentazo-1.0.1-Windows-Portable.exe` |
-| Mac con procesador Intel | `mac-intel/instalador/Presentazo-1.0.1-Mac-Intel.dmg` | `mac-intel/portable/Presentazo-1.0.1-Mac-Intel.zip` |
-| Mac con chip M (M1, M2, M3, M4…) | `mac-chip-m/instalador/Presentazo-1.0.1-Mac-Chip-M.dmg` | `mac-chip-m/portable/Presentazo-1.0.1-Mac-Chip-M.zip` |
+| Windows 10 u 11 | `windows/instalador/Presentazo-1.1.0-Windows-Instalador.exe` | `windows/portable/Presentazo-1.1.0-Windows-Portable.exe` |
+| Mac con procesador Intel | `mac-intel/instalador/Presentazo-1.1.0-Mac-Intel.dmg` | `mac-intel/portable/Presentazo-1.1.0-Mac-Intel.zip` |
+| Mac con chip M (M1, M2, M3, M4…) | `mac-chip-m/instalador/Presentazo-1.1.0-Mac-Chip-M.dmg` | `mac-chip-m/portable/Presentazo-1.1.0-Mac-Chip-M.zip` |
 
 Para saber qué Mac tienes, abre el menú Apple › Acerca de esta Mac. Si dice "Chip Apple M…", usa la versión de chip M. Si dice "Procesador Intel", la de Intel.
 
@@ -39,6 +39,15 @@ Si después de actualizar la app el celular deja de pasar diapositivas, quita Pr
 1. Abre Presentazo. Aparece un código QR.
 2. Escanéalo con la cámara del celular. Se abre el control remoto, no hay que instalar nada.
 3. Abre tu presentación y contrólala: pasar diapositivas, puntero láser, foco, lápiz, pantalla negra, mouse y teclado.
+
+### Ver la pantalla en el celular
+
+- **Vista previa:** en la pestaña Diapositivas ves una miniatura de lo que está en pantalla y de la diapositiva siguiente. La siguiente se **aprende**: un programa cualquiera no dice cuál viene después, así que Presentazo la descubre al ver qué aparece tras cada «Siguiente». Después de recorrer la presentación una vez (por ejemplo, en un ensayo) la miniatura ya está disponible.
+- **Mapa del puntero:** en Puntero y en Mouse, una pantalla en miniatura muestra dónde está el puntero de verdad.
+- **Tamaño:** en Puntero, los botones **+** y **−** cambian el tamaño del láser, del foco o del lápiz (cada uno recuerda el suyo).
+- **Modo aire:** pulsa **Aire**, mantén el dedo sobre el recuadro y apunta moviendo el celular como un control remoto. **Centrar** devuelve el puntero al centro y **Sensibilidad** ajusta qué tanto se mueve.
+
+La imagen de la vista previa es pequeña, viaja cifrada solo a tu celular y no se guarda. Se desactiva en Ajustes de la app (**Vista previa en el celular**) o en Ajustes del celular. En Mac, para la vista previa la app pide el permiso de **Grabación de pantalla**: pulsa **Dar permiso** en Ajustes de la app, actívalo en **Privacidad y seguridad › Grabación de pantalla** y vuelve a abrir Presentazo.
 
 ### Elegir qué controlar
 

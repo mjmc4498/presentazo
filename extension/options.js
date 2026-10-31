@@ -44,7 +44,7 @@ function render() {
       btn.setAttribute('aria-pressed', String(btn.dataset.value === settings[id]));
     }
   }
-  for (const id of ['clearInkOnSlide', 'showToasts', 'followActiveTab', 'autoStart', 'newCodeEachSession']) $(id).checked = !!settings[id];
+  for (const id of ['clearInkOnSlide', 'showToasts', 'followActiveTab', 'autoStart', 'newCodeEachSession', 'previewEnabled']) $(id).checked = !!settings[id];
   if (document.activeElement !== $('remoteUrl')) $('remoteUrl').value = settings.remoteUrl;
 
   const preview = $('preview');
@@ -53,7 +53,7 @@ function render() {
 }
 
 ['laserColor', 'laserSize', 'spotSize', 'nextKey'].forEach(bindChoice);
-['clearInkOnSlide', 'showToasts', 'autoStart', 'newCodeEachSession'].forEach(bindSwitch);
+['clearInkOnSlide', 'showToasts', 'autoStart', 'newCodeEachSession', 'previewEnabled'].forEach(bindSwitch);
 
 // Acceso a todos los sitios: opcional. Sin él, Presentazo solo actúa en la pestaña
 // donde se pulsa su ícono (activeTab).

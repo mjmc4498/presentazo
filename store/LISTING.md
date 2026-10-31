@@ -11,7 +11,7 @@ Todo lo que pide el [Panel del desarrollador](https://chrome.google.com/webstore
 | Campo | Valor |
 |---|---|
 | Primera publicación | versión 1.0.0, con el nombre «Mando» (su paquete queda en el historial de git) |
-| Actualización lista para subir | `dist/presentazo-1.1.0.zip` · versión 1.1.0 (ver `CHANGELOG.md`) |
+| Actualización lista para subir | `dist/presentazo-1.2.0.zip` · versión 1.2.0 (ver `CHANGELOG.md`) |
 | Autor | Miguel Mogrovejo |
 
 ---
@@ -38,13 +38,15 @@ Convierte tu celular en el control remoto de tus presentaciones. Sin apps, sin c
 • Avanza y retrocede con botones grandes o deslizando el dedo.
 • Inicia la presentación, activa la pantalla completa o sal de ella.
 • Pantalla negra para captar la atención del público.
+• Vista previa en el celular de la diapositiva en pantalla.
 • Cronómetro de la charla en el celular.
 
 ● PUNTERO
 • Láser con estela suave, visible incluso en pantalla completa.
 • Modo foco: oscurece la pantalla y resalta un círculo de luz.
 • Lápiz de colores para dibujar sobre la diapositiva, con deshacer y borrar.
-• Modo aire: apunta moviendo el celular (giroscopio).
+• Mapa de la pantalla en el celular para ver dónde está el puntero, y tamaño ajustable con + y −.
+• Modo aire: apunta moviendo el celular, como un control remoto.
 
 🖱 MOUSE REMOTO
 • Panel táctil completo: mover, clic, doble clic, clic derecho y arrastrar.
@@ -142,20 +144,22 @@ Guarda los ajustes del usuario (color y tamaño del puntero, tecla de avance, et
 
 `activeTab`
 ```
-Presentazo actúa solo en la pestaña donde el usuario pulsa su ícono (o el atajo Alt+Shift+M): allí inyecta los scripts que ejecutan las órdenes del celular (teclas para cambiar de diapositiva, clics, texto y la capa del puntero). No necesita acceso permanente a ningún sitio.
+Presentazo actúa solo en la pestaña donde el usuario pulsa su ícono (o el atajo Alt+Shift+M): allí inyecta los scripts que ejecutan las órdenes del celular (teclas para cambiar de diapositiva, clics, texto y la capa del puntero) y captura, con chrome.tabs.captureVisibleTab, una imagen reducida de esa pestaña para la vista previa en el celular del propio usuario. No necesita acceso permanente a ningún sitio.
 ```
 
 Permiso de host **opcional** (`<all_urls>`, en `optional_host_permissions`; no se pide al instalar)
 ```
-Solo se solicita, con un clic del usuario, en dos casos: si activa «Seguir la pestaña activa» (controlar cualquier pestaña que esté viendo) o si su presentación está incrustada desde otro sitio, como PowerPoint para la web dentro de OneDrive; en ese caso se pide solo ese sitio. El usuario puede quitar el acceso en Ajustes. Presentazo no lee ni transmite el contenido de las páginas; solo envía al celular del usuario el título de la pestaña controlada.
+Solo se solicita, con un clic del usuario, en dos casos: si activa «Seguir la pestaña activa» (controlar cualquier pestaña que esté viendo) o si su presentación está incrustada desde otro sitio, como PowerPoint para la web dentro de OneDrive; en ese caso se pide solo ese sitio. El usuario puede quitar el acceso en Ajustes. Presentazo no lee ni guarda el contenido de las páginas; solo envía al celular del usuario el título de la pestaña controlada, la posición del puntero y, si el usuario no la desactiva en Ajustes, una imagen reducida de la pestaña (vista previa).
 ```
+
+> Novedad de la 1.2.0: la vista previa usa `chrome.tabs.captureVisibleTab`, que funciona con `activeTab`; **no se agrega ningún permiso nuevo**. Revisa que la pestaña «Prácticas de privacidad» tenga la justificación de `activeTab` y la casilla «Contenido del sitio web» con el texto de arriba.
 
 > Con `activeTab`, la versión 1.1.0 ya no muestra el aviso de «permisos generales de host», así que la revisión debería ser más rápida.
 
 **¿Usas código remoto?** → **No.** Todo el JavaScript va incluido en el paquete (PeerJS y el generador de QR están en `lib/`). El servidor de señalización de PeerJS y el servicio de Cloudflare que entrega credenciales temporales de retransmisión solo intercambian datos, no código.
 
 **Uso de datos**, marca:
-- ☑ **Contenido del sitio web**: el título de la pestaña controlada se muestra en el celular del propio usuario (viaja cifrado de punto a punto; no llega al desarrollador).
+- ☑ **Contenido del sitio web**: el título de la pestaña controlada y una imagen reducida de ella (vista previa, desactivable en Ajustes) se muestran en el celular del propio usuario. Viajan cifrados de punto a punto, no se guardan y no llegan al desarrollador ni a terceros.
 
 Y las tres certificaciones:
 - ☑ No vendo ni transfiero datos de usuarios a terceros fuera de los casos de uso aprobados.

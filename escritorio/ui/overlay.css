@@ -44,7 +44,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .laser.on { opacity: 1; }
 
 .pen {
-  position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+  position: absolute; left: 0; top: 0; width: var(--pr, 18px); height: var(--pr, 18px);
+  margin: calc(var(--pr, 18px) / -2) 0 0 calc(var(--pr, 18px) / -2); border-radius: 50%;
   border: 2px solid var(--ink); background: color-mix(in srgb, var(--ink) 25%, transparent);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); opacity: 0; transition: opacity .2s ease; will-change: transform;
 }

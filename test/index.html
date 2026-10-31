@@ -30,8 +30,10 @@
     const log = (s) => { window.events.push(s); document.getElementById('log').textContent = window.events.slice(-12).join('\n'); };
     document.addEventListener('keydown', (e) => {
       log(`top keydown key=${e.key} keyCode=${e.keyCode} trusted=${e.isTrusted}`);
-      if (e.keyCode === 39) { slide.textContent = 'Diapositiva ' + (++n); e.preventDefault(); }
-      if (e.keyCode === 37) { slide.textContent = 'Diapositiva ' + (--n); e.preventDefault(); }
+      // Cada diapositiva tiene su propio color, como en una presentación real.
+      const show = () => { slide.textContent = 'Diapositiva ' + n; slide.style.background = `hsl(${(n * 57) % 360} 70% 85%)`; };
+      if (e.keyCode === 39) { ++n; show(); e.preventDefault(); }
+      if (e.keyCode === 37) { --n; show(); e.preventDefault(); }
     });
     document.getElementById('btn').addEventListener('click', (e) => log(`click btn detail=${e.detail}`));
     document.getElementById('btn').addEventListener('contextmenu', (e) => log('contextmenu btn'));

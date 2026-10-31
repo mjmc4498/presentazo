@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS = {
   followActiveTab: false,
   autoStart: false,
   newCodeEachSession: true,
+  previewEnabled: true,
 };
 
 export async function getSettings() {

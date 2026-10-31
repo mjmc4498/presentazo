@@ -25,14 +25,15 @@ Me gusta porque suena a lo que todos queremos cuando exponemos: que nos salga un
 
 | | |
 |---|---|
-| **Diapositivas** | Siguiente/anterior (botón grande o deslizando), iniciar presentación, pantalla completa, pantalla negra, salir. Cronómetro en el celular. |
-| **Puntero** | Láser con estela, foco de luz, lápiz de colores (deshacer/borrar) y *modo aire* con giroscopio. Se ve encima de la presentación incluso en pantalla completa. |
-| **Mouse remoto** | Panel táctil: mover, clic, doble clic, clic derecho (dos dedos), arrastrar y desplazamiento. |
+| **Diapositivas** | Siguiente/anterior (botón grande o deslizando), iniciar presentación, pantalla completa, pantalla negra, salir. Cronómetro en el celular. **Vista previa:** miniatura de lo que está en pantalla y de la diapositiva siguiente. |
+| **Puntero** | Láser con estela, foco de luz, lápiz de colores (deshacer/borrar) y *modo aire* con giroscopio. Se ve encima de la presentación incluso en pantalla completa. **Mapa de la pantalla** en el celular con la posición real del puntero, y botones **+ y −** para el tamaño del láser, el foco y el lápiz. |
+| **Modo aire** | Apunta moviendo el celular como un control remoto. Funciona con el celular plano, inclinado o de pie, con filtro contra el temblor, precisión al ir despacio, sensibilidad propia y botón **Centrar**. |
+| **Mouse remoto** | Panel táctil: mover, clic, doble clic, clic derecho (dos dedos), arrastrar y desplazamiento. Con mapa de la pantalla para ver dónde está el cursor. |
 | **Teclado** | Escritura en vivo desde el teclado del celular y teclas especiales (Esc, Tab, flechas, ⌫, ↵). |
 | **Conexión** | WebRTC directo y cifrado; retransmisión de Cloudflare para redes restrictivas; reconexión automática; código QR nuevo en cada sesión; varios celulares a la vez. |
 | **Detalles** | Pantalla del celular siempre encendida, vibración, todo en español, modo claro/oscuro en la extensión, atajo `Alt+Shift+M`. |
 
-Probado de principio a fin (38 comprobaciones automáticas) y verificado con **Google Slides** (iniciar, avanzar, retroceder y salir del modo presentación) y **reveal.js**.
+Probado de principio a fin (60 comprobaciones automáticas en la extensión, 61 en la app de escritorio y 20 en el modo aire) y verificado con **Google Slides** (iniciar, avanzar, retroceder y salir del modo presentación) y **reveal.js**.
 
 ## App de escritorio (Windows y Mac)
 
@@ -72,6 +73,14 @@ Además de la extensión, Presentazo tiene una app para Windows y Mac. Sirve par
 - Los scripts de contenido **solo actúan mientras hay una sesión iniciada** y se retiran al detenerla.
 - La capa visual se dibuja en la capa superior del navegador (elemento `popover`), por eso el láser se ve encima de presentaciones en pantalla completa.
 - Si la presentación está dentro de un iframe de otro dominio (p. ej. PowerPoint para la web), las órdenes se enrutan a ese iframe con una sonda de un solo uso a través del service worker.
+
+## Vista previa y «lo que sigue»
+
+Con la vista previa activada, la computadora envía al celular una **imagen reducida** (unos 480 px, ≈ 30 KB) de lo que se presenta: la extensión captura la pestaña controlada y la app de escritorio, la pantalla donde se presenta. Viaja cifrada de punto a punto, solo a tu celular, y no se guarda ni pasa por ningún servidor de Presentazo. Se puede desactivar en el celular (Ajustes) y en la computadora (Ajustes de la extensión o de la app).
+
+**«Lo que sigue» se aprende.** Un programa cualquiera no dice cuál es su siguiente diapositiva, así que Presentazo la descubre viendo qué aparece después de cada «Siguiente»: al recorrer la presentación una vez (por ejemplo, en un ensayo), la miniatura de la siguiente queda disponible. Mientras no se haya visto, el celular lo indica.
+
+En Mac, la app de escritorio necesita el permiso de **Grabación de pantalla** para la vista previa; el resto funciona sin él.
 
 ## Estructura
 
@@ -160,6 +169,7 @@ npm run serve               # servidor local en http://localhost:8765 (otra term
 npm run test:e2e            # prueba completa con activeTab (instalación normal)
 npm run test:e2e:todos      # la misma prueba con el acceso opcional a todos los sitios concedido
 npm run test:escritorio     # prueba de punta a punta de la app de escritorio
+npm run test:air            # modo aire: ejes, filtro y zona muerta con giros simulados
 npm run icons               # regenera íconos desde design/*.svg
 npm run store:capture       # capturas reales de la extensión
 npm run store:images        # compone las imágenes de la tienda

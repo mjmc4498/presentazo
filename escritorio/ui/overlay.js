@@ -5,10 +5,23 @@
 
 const bridge = window.presentazo;
 
-const SIZES = { s: 16, m: 24, l: 34 };
-const SPOTS = { s: 22, m: 32, l: 44 };
+// Tamaños en 7 niveles (el 4 es el normal). Láser y lápiz en píxeles; el foco en vmin.
+// Las mismas tablas usa el control del celular y la extensión de Chrome.
+const LASER_PX = [10, 16, 20, 24, 29, 34, 46];
+const SPOT_VMIN = [14, 22, 27, 32, 38, 44, 56];
+const PEN_PX = [1.5, 2.5, 3, 4, 6, 9, 14];
+const BASE_LEVEL = { s: 2, m: 4, l: 6 }; // equivalencia con los ajustes Pequeño / Mediano / Grande
+const LEVELS = 7;
 
 const settings = { laserColor: '#FF3B30', laserSize: 'm', spotSize: 'm' };
+const levels = {}; // tamaños elegidos desde el celular (mandan sobre los Ajustes)
+
+// Nivel (1 a 7) de una herramienta: el del celular si lo cambió; si no, el de los Ajustes.
+function level(tool) {
+  if (levels[tool]) return levels[tool];
+  if (tool === 'pen') return 4;
+  return BASE_LEVEL[settings[`${tool}Size`]] || 4;
+}
 
 const $ = (sel) => document.querySelector(sel);
 const el = {
@@ -41,9 +54,40 @@ const timers = {};
 function applySettings() {
   const s = document.body.style;
   s.setProperty('--c', settings.laserColor);
-  s.setProperty('--s', `${SIZES[settings.laserSize] || SIZES.m}px`);
-  s.setProperty('--d', `${SPOTS[settings.spotSize] || SPOTS.m}vmin`);
+  s.setProperty('--s', `${LASER_PX[level('laser') - 1]}px`);
+  s.setProperty('--d', `${SPOT_VMIN[level('spot') - 1]}vmin`);
+  s.setProperty('--pr', `${12 + PEN_PX[level('pen') - 1] * 1.5}px`);
   s.setProperty('--ink', inkColor);
+}
+
+function setSize({ which, level: value }) {
+  if (!['laser', 'spot', 'pen'].includes(which)) return;
+  levels[which] = Math.max(1, Math.min(LEVELS, Math.round(Number(value)) || 4));
+  applySettings();
+}
+
+// Informa al celular dónde está el puntero (como fracción de la pantalla), sin saturar el canal.
+let posAt = 0;
+let posTimer = 0;
+function reportPos(force = false) {
+  const wait = 45 - (performance.now() - posAt);
+  if (!force && wait > 0) {
+    if (!posTimer) posTimer = setTimeout(() => { posTimer = 0; reportPos(true); }, wait);
+    return;
+  }
+  clearTimeout(posTimer);
+  posTimer = 0;
+  posAt = performance.now();
+  bridge.pos({ x: +(pos.x / innerWidth).toFixed(4), y: +(pos.y / innerHeight).toFixed(4), w: innerWidth, h: innerHeight });
+}
+
+function center() {
+  pos.x = innerWidth / 2;
+  pos.y = innerHeight / 2;
+  shown.x = pos.x;
+  shown.y = pos.y;
+  animate();
+  reportPos(true);
 }
 
 function resize() {
@@ -65,6 +109,7 @@ function moveBy(dx, dy) {
   pos.x = Math.max(0, Math.min(innerWidth - 1, pos.x + dx * scale));
   pos.y = Math.max(0, Math.min(innerHeight - 1, pos.y + dy * scale));
   animate();
+  reportPos();
 }
 
 function animate() {
@@ -100,7 +145,7 @@ function drawTrail(now) {
   const life = 260;
   trail = trail.filter((p) => now - p.t < life);
   if (trail.length < 2) return;
-  const size = SIZES[settings.laserSize] || SIZES.m;
+  const size = LASER_PX[level('laser') - 1];
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = settings.laserColor;
@@ -127,6 +172,7 @@ function setMode(next) {
   el.laser.classList.remove('on');
   el.spot.classList.remove('on');
   el.pen.classList.remove('on');
+  reportPos(true);
 }
 
 function autoHide(name, ms) {
@@ -138,6 +184,7 @@ function autoHide(name, ms) {
 }
 
 function pointer(cmd) {
+  if (cmd.a === 'center') { center(); return; }
   if (cmd.a === 'move') {
     moveBy(cmd.dx, cmd.dy);
     if (mode === 'pen') { el.pen.classList.add('on'); autoHide('pen', 2500); }
@@ -175,7 +222,7 @@ function pointer(cmd) {
 // ---------------------------------------------------------------- tinta
 
 function beginStroke() {
-  stroke = { color: inkColor, width: 4, pts: [] };
+  stroke = { color: inkColor, width: PEN_PX[level('pen') - 1], pts: [] };
   strokes.push(stroke);
   addInkPoint(shown.x, shown.y);
 }
@@ -274,6 +321,9 @@ bridge.onCommand((cmd) => {
       break;
     case 'ink':
       ink(cmd);
+      break;
+    case 'size':
+      setSize(cmd);
       break;
     case 'black':
       black = !!cmd.on;
