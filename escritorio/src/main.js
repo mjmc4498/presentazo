@@ -608,11 +608,18 @@ function testScreen() {
   };
   const [r, g, b] = [f(0), f(8), f(4)];
   const buf = Buffer.alloc(w * h * 4);
+  // Un recuadro de ruido (distinto en cada diapositiva pero siempre igual en la misma) hace que la
+  // imagen pese unos 30 KB, como una diapositiva real, y así se prueba que se parte en trozos.
+  let seed = testSlide * 7919 + 1;
+  const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed & 255; };
   for (let i = 0; i < w * h; i++) {
-    const bar = (i % w) > 340 && (i % w) < 400 && Math.floor(i / w) > 120;
-    buf[i * 4] = bar ? 20 : b;
-    buf[i * 4 + 1] = bar ? 20 : g;
-    buf[i * 4 + 2] = bar ? 20 : r;
+    const x = i % w;
+    const y = Math.floor(i / w);
+    const bar = x > 340 && x < 400 && y > 120;
+    const noise = x > 40 && x < 300 && y > 40 && y < 210;
+    buf[i * 4] = noise ? rnd() : bar ? 20 : b;
+    buf[i * 4 + 1] = noise ? rnd() : bar ? 20 : g;
+    buf[i * 4 + 2] = noise ? rnd() : bar ? 20 : r;
     buf[i * 4 + 3] = 255;
   }
   return { img: jpegOf(nativeImage.createFromBitmap(buf, { width: w, height: h })), w: 1920, h: 1080 };

@@ -26,12 +26,35 @@
   <script>
     window.events = [];
     let n = 1;
+
+    // ?filmstrip simula Presentaciones de Google: un panel de miniaturas con el dibujo de cada
+    // diapositiva (g#filmstrip-slide-<n>-<id>) y la dirección con la diapositiva en pantalla.
+    const filmstrip = new URLSearchParams(location.search).has('filmstrip');
+    const slideIds = ['g11_0_0', 'g11_0_1', 'g11_0_2', 'g11_0_3'];
+    if (filmstrip) {
+      const colors = ['#34c759', '#0a84ff', '#ff9f0a', '#bf5af2'];
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('fill', 'none');
+      svg.style.cssText = 'position:absolute;left:-9999px;top:0;width:10px;height:10px';
+      slideIds.forEach((id, i) => {
+        const box = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        box.setAttribute('class', 'punch-filmstrip-thumbnail');
+        box.innerHTML = `<g id="filmstrip-slide-${i}-${id}"><path fill="#fff" d="M 0 0 L 365760 0 365760 205740 0 205740 Z"></path>` +
+          `<g id="filmstrip-slide-${i}-${id}_i1"><path fill="${colors[i]}" d="M 40000 30000 L 320000 30000 320000 170000 40000 170000 Z"></path></g></g>`;
+        svg.appendChild(box);
+      });
+      document.body.appendChild(svg);
+    }
     const slide = document.getElementById('slide');
     const log = (s) => { window.events.push(s); document.getElementById('log').textContent = window.events.slice(-12).join('\n'); };
     document.addEventListener('keydown', (e) => {
       log(`top keydown key=${e.key} keyCode=${e.keyCode} trusted=${e.isTrusted}`);
       // Cada diapositiva tiene su propio color, como en una presentación real.
-      const show = () => { slide.textContent = 'Diapositiva ' + n; slide.style.background = `hsl(${(n * 57) % 360} 70% 85%)`; };
+      const show = () => {
+        slide.textContent = 'Diapositiva ' + n;
+        slide.style.background = `hsl(${(n * 57) % 360} 70% 85%)`;
+        if (filmstrip) history.replaceState(null, '', `?filmstrip&slide=id.${slideIds[n - 1]}`);
+      };
       if (e.keyCode === 39) { ++n; show(); e.preventDefault(); }
       if (e.keyCode === 37) { --n; show(); e.preventDefault(); }
     });

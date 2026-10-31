@@ -740,6 +740,128 @@
     return [...origins];
   }
 
+
+  // ------------------------------------------------------------ Presentaciones de Google: diapositiva siguiente
+
+  // Un programa cualquiera no dice cuál es su siguiente diapositiva, pero Presentaciones de Google
+  // sí deja verla: su panel de miniaturas (a la izquierda del editor, oculto mientras se presenta)
+  // tiene un dibujo vectorial de cada diapositiva y la dirección de la página indica cuál está en
+  // pantalla. Aquí se convierte la siguiente en una imagen pequeña para el celular. Todo ocurre
+  // dentro de la página: no se descarga nada de Google ni se envía a ningún servidor.
+  const slideThumbs = new Map(); // id de diapositiva -> { img, w, h }
+  let lookaheadJob = null;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function currentSlideId() {
+    try {
+      const url = new URL(location.href);
+      const raw = url.searchParams.get('slide') || new URLSearchParams(url.hash.slice(1)).get('slide') || '';
+      return raw.replace(/^id\./, '') || null;
+    } catch { return null; }
+  }
+
+  // Diapositivas dibujadas en el panel, por orden: [{ id, g }].
+  function filmstripSlides() {
+    const list = [];
+    for (const g of document.querySelectorAll('g[id^="filmstrip-slide-"]')) {
+      const m = g.id.match(/^filmstrip-slide-(\d+)-(.+)$/);
+      // Solo el grupo de la diapositiva entera, no los de sus formas.
+      if (!m || g.parentElement?.closest(`[id^="filmstrip-slide-${m[1]}-"]`)) continue;
+      list[Number(m[1])] ??= { id: m[2], g };
+    }
+    return list;
+  }
+
+  const readAsDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // Dibuja una diapositiva del panel como JPEG. Devuelve null si aún no terminó de cargar.
+  async function renderSlide(g) {
+    const size = (g.querySelector('path')?.getAttribute('d') || '').match(/^M 0 0 L ([\d.]+) 0 [\d.]+ ([\d.]+) 0 [\d.]+ Z/);
+    const vw = size ? Number(size[1]) : 365760;
+    const vh = size ? Number(size[2]) : 205740;
+    const clone = g.cloneNode(true);
+    for (const image of clone.querySelectorAll('image')) {
+      const href = image.getAttribute('xlink:href') || image.getAttribute('href');
+      if (!href) return null; // la imagen todavía no llegó
+      if (href.startsWith('blob:')) {
+        // Un SVG usado como imagen no puede cargar recursos externos: se incrustan.
+        image.setAttribute('xlink:href', await readAsDataUrl(await (await fetch(href)).blob()));
+        image.removeAttribute('href');
+      }
+    }
+    // Las tipografías propias de Google no están disponibles fuera de la página: respaldo sin serifa.
+    for (const text of clone.querySelectorAll('text')) {
+      const style = (text.getAttribute('style') || '').replace(/font-family:\s*([^;]+);?/, (_, f) => `font-family:${f}, Roboto, "Helvetica Neue", Arial, sans-serif;`);
+      text.setAttribute('style', style);
+    }
+    const W = 480;
+    const H = Math.max(1, Math.round((W * vh) / vw));
+    // fill="none": el <svg> de la página lo trae y las formas sin relleno lo heredan; sin él saldrían negras.
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${vw} ${vh}" fill="none">${new XMLSerializer().serializeToString(clone)}</svg>`;
+    const picture = new Image();
+    picture.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+    await picture.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(picture, 0, 0, W, H);
+    let img = '';
+    for (const quality of [0.62, 0.5, 0.4, 0.3]) {
+      img = canvas.toDataURL('image/jpeg', quality);
+      if (img.length * 0.75 <= 42000) break;
+    }
+    return { img, w: W, h: H };
+  }
+
+  // Si la miniatura de esa posición aún no se dibujó (presentaciones largas), se desplaza el panel
+  // hasta ella. Solo mientras se presenta: en el editor no se mueve lo que el usuario está viendo.
+  async function thumbAt(index) {
+    let slides = filmstripSlides();
+    if (slides[index]) return slides[index];
+    const box = document.querySelectorAll('.punch-filmstrip-thumbnail')[index];
+    if (!box || !document.querySelector('iframe.punch-present-iframe')) return null;
+    try { box.scrollIntoView({ block: 'nearest' }); } catch {}
+    for (let i = 0; i < 6; i++) {
+      await sleep(150);
+      slides = filmstripSlides();
+      if (slides[index]) return slides[index];
+    }
+    return null;
+  }
+
+  async function lookahead() {
+    const cur = currentSlideId();
+    const slides = filmstripSlides();
+    if (!cur || !slides.length) return null;
+    const index = slides.findIndex((s) => s && s.id === cur);
+    if (index < 0) return null;
+    const total = Math.max(slides.length, document.querySelectorAll('.punch-filmstrip-thumbnail').length);
+    if (index + 1 >= total) return { cur, next: null }; // es la última
+    const slide = await thumbAt(index + 1);
+    if (!slide) return null;
+    let thumb = slideThumbs.get(slide.id);
+    if (!thumb) {
+      thumb = await renderSlide(slide.g);
+      if (!thumb) return null;
+      slideThumbs.set(slide.id, thumb);
+    }
+    return { cur, next: slide.id, ...thumb };
+  }
+
+  // Una sola a la vez: varias peticiones seguidas comparten el mismo trabajo.
+  function lookaheadOnce() {
+    lookaheadJob ??= lookahead().catch(() => null).finally(() => { lookaheadJob = null; });
+    return lookaheadJob;
+  }
+
   // ------------------------------------------------------------ órdenes
 
   const SLIDE_NAV = new Set(['next', 'prev', 'first', 'last']);
@@ -794,6 +916,8 @@
         break;
       case 'frames':
         return { ok: true, frames: embeddedOrigins() };
+      case 'lookahead':
+        return lookaheadOnce().then((res) => ({ ok: true, ...(res || {}) }));
       case 'reset':
         overlay.destroy();
         overlay = new Overlay();
@@ -825,6 +949,11 @@
       else if (isTop) res = handleTop(msg.mando);
     } catch (err) {
       console.debug('[Presentazo]', err);
+    }
+    // Algunas órdenes responden más tarde (p. ej. la diapositiva siguiente): se espera la respuesta.
+    if (res && typeof res.then === 'function') {
+      res.then(sendResponse, () => sendResponse({ ok: false }));
+      return true;
     }
     sendResponse(res);
   };

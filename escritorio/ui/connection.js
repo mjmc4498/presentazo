@@ -102,8 +102,24 @@ function deviceName(raw) {
   return name.slice(0, 40) || 'Celular';
 }
 
+// El canal de datos pierde EN SILENCIO los mensajes de más de ~16 KB (se comprobó con 20, 32 y
+// 48 KB: no llegan, y tampoco da error). Los grandes, como las miniaturas, se parten en trozos
+// pequeños y el celular los vuelve a juntar.
+const CHUNK_CHARS = 12000;
+let chunkSeq = 0;
+
 function send(conn, msg) {
-  try { if (conn.open) conn.send(msg); } catch {}
+  try {
+    if (!conn.open) return;
+    const text = JSON.stringify(msg);
+    if (text.length <= CHUNK_CHARS) {
+      conn.send(msg);
+      return;
+    }
+    const k = ++chunkSeq;
+    const n = Math.ceil(text.length / CHUNK_CHARS);
+    for (let i = 0; i < n; i++) conn.send({ t: 'part', k, i, n, d: text.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) });
+  } catch {}
 }
 
 function onConnection(conn) {

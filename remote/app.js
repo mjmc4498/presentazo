@@ -5,7 +5,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.2.1';
 
   // Worker de Cloudflare que entrega credenciales temporales de retransmisión (TURN)
   // para redes que bloquean la conexión directa.
@@ -57,7 +57,7 @@
     airDenied: 'Permiso de movimiento denegado',
     controlling: 'Controlando',
     peekNow: 'En pantalla', peekNext: 'Siguiente',
-    peekUnknown: 'Aún no la has visto', peekLoading: 'Cargando…',
+    peekUnknown: 'Aún no la has visto', peekLoading: 'Cargando…', peekLast: 'Última diapositiva',
     peekOld: 'Actualiza Presentazo en la computadora para ver la vista previa.',
     peekHostOff: 'La vista previa está desactivada en la computadora.',
     peekPhoneOff: 'Vista previa desactivada en este celular.',
@@ -333,8 +333,28 @@
     c.on('error', () => {});
   }
 
+  // La computadora parte los mensajes grandes (miniaturas) en trozos: aquí se vuelven a juntar.
+  const parts = new Map();
+
+  function onPart(msg) {
+    if (!Number.isInteger(msg.i) || !Number.isInteger(msg.n) || msg.n < 1 || msg.n > 40 || msg.i < 0 || msg.i >= msg.n || typeof msg.d !== 'string') return;
+    let entry = parts.get(msg.k);
+    if (!entry) {
+      entry = { n: msg.n, got: 0, list: new Array(msg.n) };
+      parts.set(msg.k, entry);
+      if (parts.size > 8) parts.delete(parts.keys().next().value);
+    }
+    if (entry.list[msg.i] !== undefined) return;
+    entry.list[msg.i] = msg.d;
+    entry.got += 1;
+    if (entry.got < entry.n) return;
+    parts.delete(msg.k);
+    try { onData(JSON.parse(entry.list.join(''))); } catch {}
+  }
+
   function onData(msg) {
     if (!msg || typeof msg !== 'object') return;
+    if (msg.t === 'part') { onPart(msg); return; }
     switch (msg.t) {
       case 'welcome':
         everConnected = true;
@@ -358,6 +378,9 @@
         break;
       case 'thumb':
         onThumb(msg);
+        break;
+      case 'next':
+        onNext(msg);
         break;
       case 'target':
         setTarget(msg);
@@ -699,6 +722,7 @@
     error: null,
     states: new Map(), // id -> { sig, url }
     nextOf: new Map(), // id -> id de lo que aparece al pulsar «Siguiente»
+    host: null, // la siguiente, si el programa la entrega (Presentaciones de Google): { id, url } o { id: null }
     cur: null, // id de la diapositiva en pantalla (ya estable)
     learned: null, // última imagen ya procesada
     ids: 0,
@@ -757,9 +781,12 @@
     const live = state === 'ok' ? peek.url : null;
     setImg($('#peek-now'), live);
     $('#peek-now-empty').textContent = state === 'loading' ? t('peekLoading') : '';
-    const known = peek.states.get(peek.nextOf.get(peek.cur));
-    setImg($('#peek-next'), state === 'ok' ? known?.url : null);
-    $('#peek-next-empty').textContent = state === 'ok' && !known ? t('peekUnknown') : '';
+    // La siguiente: la que entrega el programa (desde el principio, sin haberla visitado) o,
+    // si no la entrega, la que Presentazo aprendió al verla.
+    const learned = peek.states.get(peek.nextOf.get(peek.cur));
+    const next = peek.host?.url || learned?.url || null;
+    setImg($('#peek-next'), state === 'ok' ? next : null);
+    $('#peek-next-empty').textContent = state !== 'ok' || next ? '' : t(peek.host && peek.host.id === null ? 'peekLast' : 'peekUnknown');
     for (const img of $$('.map-img')) setImg(img, live);
   }
 
@@ -826,6 +853,15 @@
     }
     peek.cur = id;
     peek.learned = url;
+    renderPeek();
+  }
+
+  // La computadora entrega la diapositiva siguiente (por ahora, Presentaciones de Google).
+  function onNext(msg) {
+    if (msg.unavailable) peek.host = null;
+    else if (msg.id === null) peek.host = { id: null };
+    else if (typeof msg.img === 'string' && msg.img.startsWith('data:image/jpeg;base64,') && msg.img.length <= 400000) peek.host = { id: String(msg.id), url: msg.img };
+    else return;
     renderPeek();
   }
 

@@ -26,6 +26,8 @@ let lastThumbKey = '';
 let lastThumbError = '';
 let captureFailures = 0;
 let thumbSeq = 0;
+let lastNextKey = ''; // «actual>siguiente» ya enviado
+let lastNextMsg = null;
 
 const toSW = (msg) => chrome.runtime.sendMessage({ to: 'sw', ...msg }).catch(() => null);
 
@@ -102,8 +104,24 @@ function deviceName(raw) {
   return name.slice(0, 40) || 'Celular';
 }
 
+// El canal de datos pierde EN SILENCIO los mensajes de más de ~16 KB (se comprobó con 20, 32 y
+// 48 KB: no llegan, y tampoco da error). Los grandes, como las miniaturas, se parten en trozos
+// pequeños y el celular los vuelve a juntar.
+const CHUNK_CHARS = 12000;
+let chunkSeq = 0;
+
 function send(conn, msg) {
-  try { if (conn.open) conn.send(msg); } catch {}
+  try {
+    if (!conn.open) return;
+    const text = JSON.stringify(msg);
+    if (text.length <= CHUNK_CHARS) {
+      conn.send(msg);
+      return;
+    }
+    const k = ++chunkSeq;
+    const n = Math.ceil(text.length / CHUNK_CHARS);
+    for (let i = 0; i < n; i++) conn.send({ t: 'part', k, i, n, d: text.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) });
+  } catch {}
 }
 
 function onConnection(conn) {
@@ -139,6 +157,7 @@ function onConnection(conn) {
       if (device.preview) {
         if (lastThumb) send(conn, thumbMessage(lastThumb));
         else if (lastThumbError) send(conn, { t: 'thumb', error: lastThumbError });
+        if (lastNextMsg) send(conn, lastNextMsg);
       }
       updatePreview();
       return;
@@ -264,7 +283,32 @@ async function capture() {
     for (const d of previewDevices()) send(d.conn, thumbMessage(res));
   } finally {
     capturing = false;
+    // Se consulta la siguiente en cada ciclo, también cuando la imagen no cambió.
+    lookahead();
   }
+}
+
+// Diapositiva siguiente: solo la entrega Presentaciones de Google (la página la tiene dibujada en su
+// panel de miniaturas). Se envía cuando cambia la diapositiva en pantalla; con otro programa no se
+// envía nada y el celular aprende la siguiente viendo qué aparece tras cada «Siguiente».
+async function lookahead() {
+  if (!previewDevices().length) return;
+  const res = await toSW({ type: 'lookahead' });
+  if (!res?.cur) {
+    if (lastNextKey) {
+      lastNextKey = '';
+      lastNextMsg = null;
+      for (const d of previewDevices()) send(d.conn, { t: 'next', unavailable: true });
+    }
+    return;
+  }
+  const key = `${res.cur}>${res.next ?? ''}`;
+  if (key === lastNextKey) return;
+  lastNextKey = key;
+  lastNextMsg = res.next
+    ? { t: 'next', for: res.cur, id: res.next, w: res.w, h: res.h, img: res.img }
+    : { t: 'next', for: res.cur, id: null };
+  for (const d of previewDevices()) send(d.conn, lastNextMsg);
 }
 
 // Una captura a los 0,35 s (la transición empieza) y otra a los 1,25 s (la diapositiva ya quedó).

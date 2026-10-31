@@ -11,7 +11,7 @@ Todo lo que pide el [Panel del desarrollador](https://chrome.google.com/webstore
 | Campo | Valor |
 |---|---|
 | Primera publicación | versión 1.0.0, con el nombre «Mando» (su paquete queda en el historial de git) |
-| Actualización lista para subir | `dist/presentazo-1.2.0.zip` · versión 1.2.0 (ver `CHANGELOG.md`) |
+| Actualización lista para subir | `dist/presentazo-1.2.1.zip` · versión 1.2.1 (ver `CHANGELOG.md`) |
 | Autor | Miguel Mogrovejo |
 
 ---
@@ -38,7 +38,7 @@ Convierte tu celular en el control remoto de tus presentaciones. Sin apps, sin c
 • Avanza y retrocede con botones grandes o deslizando el dedo.
 • Inicia la presentación, activa la pantalla completa o sal de ella.
 • Pantalla negra para captar la atención del público.
-• Vista previa en el celular de la diapositiva en pantalla.
+• Vista previa en el celular de la diapositiva en pantalla y de la siguiente.
 • Cronómetro de la charla en el celular.
 
 ● PUNTERO
@@ -144,7 +144,7 @@ Guarda los ajustes del usuario (color y tamaño del puntero, tecla de avance, et
 
 `activeTab`
 ```
-Presentazo actúa solo en la pestaña donde el usuario pulsa su ícono (o el atajo Alt+Shift+M): allí inyecta los scripts que ejecutan las órdenes del celular (teclas para cambiar de diapositiva, clics, texto y la capa del puntero) y captura, con chrome.tabs.captureVisibleTab, una imagen reducida de esa pestaña para la vista previa en el celular del propio usuario. No necesita acceso permanente a ningún sitio.
+Presentazo actúa solo en la pestaña donde el usuario pulsa su ícono (o el atajo Alt+Shift+M): allí inyecta los scripts que ejecutan las órdenes del celular (teclas para cambiar de diapositiva, clics, texto y la capa del puntero) y captura, con chrome.tabs.captureVisibleTab, una imagen reducida de esa pestaña para la vista previa en el celular del propio usuario; en Presentaciones de Google lee además, de la propia página, el dibujo de la diapositiva siguiente. No necesita acceso permanente a ningún sitio.
 ```
 
 Permiso de host **opcional** (`<all_urls>`, en `optional_host_permissions`; no se pide al instalar)
@@ -154,6 +154,8 @@ Solo se solicita, con un clic del usuario, en dos casos: si activa «Seguir la p
 
 > Novedad de la 1.2.0: la vista previa usa `chrome.tabs.captureVisibleTab`, que funciona con `activeTab`; **no se agrega ningún permiso nuevo**. Revisa que la pestaña «Prácticas de privacidad» tenga la justificación de `activeTab` y la casilla «Contenido del sitio web» con el texto de arriba.
 
+> Novedad de la 1.2.1: en Presentaciones de Google lee, de la propia página, el dibujo de la diapositiva siguiente para la vista previa del celular. Todo ocurre en la pestaña ya autorizada con `activeTab`; **no se agrega ningún permiso**.
+>
 > Con `activeTab`, la versión 1.1.0 ya no muestra el aviso de «permisos generales de host», así que la revisión debería ser más rápida.
 
 **¿Usas código remoto?** → **No.** Todo el JavaScript va incluido en el paquete (PeerJS y el generador de QR están en `lib/`). El servidor de señalización de PeerJS y el servicio de Cloudflare que entrega credenciales temporales de retransmisión solo intercambian datos, no código.

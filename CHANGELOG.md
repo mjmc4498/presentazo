@@ -4,6 +4,19 @@ Todas las versiones de Presentazo: la extensión de Chrome y la app de escritori
 extensión, el número de versión de cada paquete debe ser mayor que el anterior para que
 la Chrome Web Store lo acepte.
 
+## Extensión 1.2.1 y app de escritorio 1.1.1 (31 de octubre de 2026)
+
+- **La diapositiva siguiente se ve desde la primera, en Presentaciones de Google.** La extensión la
+  lee del panel de miniaturas de la propia página (que tiene dibujada cada diapositiva) y la envía
+  al celular, así que ya no hace falta haberla visitado antes. Todo ocurre dentro de la página:
+  no se descarga nada de Google ni se pide ningún permiso nuevo. En la última diapositiva el
+  celular lo indica. Con otros programas la siguiente se sigue aprendiendo al verla.
+- **Corrección importante en la vista previa:** el canal de datos pierde en silencio los mensajes
+  de más de 16 KB, así que las miniaturas de diapositivas con muchos detalles no llegaban al
+  celular (solo llegaban las livianas). Ahora los mensajes grandes se parten en trozos y el celular
+  los junta. Afecta a la extensión y a la app, por eso hay versión nueva de las dos.
+- Prueba manual con una presentación real de Google (`npm run test:slides`, necesita internet).
+
 ## Extensión 1.2.0 y app de escritorio 1.1.0 (31 de octubre de 2026)
 
 Las dos versiones traen lo mismo, porque comparten el control del celular.

@@ -261,6 +261,49 @@ try {
   check('La miniatura de la siguiente es distinta a la actual', ok && nextImg > 0 && nextImg !== (await phone.evaluate(() => document.getElementById('peek-now').src.length)), `${nextImg} vs ${moved}`);
   await phone.screenshot({ path: `${OUT}/e2e-celular-siguiente.png` });
 
+  // Una miniatura pesada (como la de una diapositiva real) debe llegar completa: el canal pierde
+  // en silencio los mensajes de más de ~16 KB, así que se parten en trozos y el celular los junta.
+  const nowLen = () => phone.evaluate(() => document.getElementById('peek-now').src.length);
+  const smallLen = await nowLen();
+  await deck.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.id = 'ruido';
+    c.width = 1000;
+    c.height = 600;
+    c.style.cssText = 'position:fixed;left:10px;top:10px;z-index:1';
+    const g = c.getContext('2d');
+    const d = g.createImageData(1000, 600);
+    for (let i = 0; i < d.data.length; i++) d.data[i] = i % 4 === 3 ? 255 : (Math.random() * 255) | 0;
+    g.putImageData(d, 0, 0);
+    document.body.append(c);
+  });
+  ok = await waitFor(async () => (await nowLen()) > 24000, { timeout: 15000 });
+  check('Una miniatura de más de 16 KB llega completa al celular (se parte en trozos)', !!ok, `${smallLen} → ${await nowLen()} caracteres`);
+  await deck.evaluate(() => document.getElementById('ruido').remove());
+
+  // Presentaciones de Google (simulado): la siguiente se ve desde el principio, sin haberla visitado.
+  await deck.goto(`${BASE}/test/index.html?filmstrip&slide=id.g11_0_0`, { waitUntil: 'networkidle0' });
+  await deck.evaluate(() => { document.getElementById('log').style.visibility = 'hidden'; });
+  const nextSrc = () => phone.evaluate(() => { const i = document.getElementById('peek-next'); return i.hidden ? '' : i.src; });
+  const nextText = () => phone.evaluate(() => document.getElementById('peek-next-empty').textContent);
+  const shown = await waitFor(async () => (await nextSrc()) || null, { timeout: 25000 });
+  check('Presentaciones de Google: se ve la siguiente desde la primera, sin haberla visitado', !!shown, await nextText());
+  const seen = [await nextSrc()];
+  for (let i = 0; i < 2; i++) {
+    const before = seen[seen.length - 1];
+    await phone.click('#next');
+    const changedNext = await waitFor(async () => { const v = await nextSrc(); return v && v !== before ? v : null; }, { timeout: 12000 });
+    if (changedNext) seen.push(changedNext);
+  }
+  check('Al avanzar, la siguiente cambia por la que viene después (3 distintas)', seen.length === 3 && new Set(seen).size === 3, `${seen.length} imágenes, ${new Set(seen).size} distintas`);
+  await phone.click('#next');
+  ok = await waitFor(async () => (await nextText()) === 'Última diapositiva', { timeout: 12000 });
+  check('En la última diapositiva el celular lo indica', !!ok, await nextText());
+  await phone.screenshot({ path: `${OUT}/e2e-celular-ultima.png` });
+  await deck.goto(`${BASE}/test/index.html`, { waitUntil: 'networkidle0' });
+  ok = await waitFor(async () => (await nextText()) !== 'Última diapositiva', { timeout: 12000 });
+  check('Con otro programa (sin panel de miniaturas) vuelve a aprender la siguiente', !!ok, await nextText());
+
   // La vista previa se puede desactivar desde el celular y desde la computadora
   await phone.evaluate(() => { const c = document.getElementById('preview'); c.checked = false; c.dispatchEvent(new Event('change')); });
   ok = await waitFor(() => phone.evaluate(() => document.getElementById('peek').dataset.state === 'off'), { timeout: 3000 });

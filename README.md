@@ -5,7 +5,7 @@
 <h1 align="center">Presentazo</h1>
 <p align="center">Controla tus presentaciones desde el celular: en Chrome con la extensión y en Windows o Mac con la app de escritorio.<br>
 Escanea un QR y usa avance de diapositivas, puntero láser, lápiz, mouse remoto y teclado.</p>
-<p align="center"><sub>Creado por <b>Miguel Mogrovejo</b> · v1.1.0 · antes llamado «Mando»</sub></p>
+<p align="center"><sub>Creado por <b>Miguel Mogrovejo</b> · v1.2.1 · antes llamado «Mando»</sub></p>
 <p align="center"><a href="https://presentazo.com/"><b>presentazo.com</b></a></p>
 <p align="center"><a href="https://www.facebook.com/presentazo/">Facebook</a> · <a href="https://www.instagram.com/presentazo/">Instagram</a> · <a href="https://www.tiktok.com/@presentazo">TikTok</a> · <a href="https://www.youtube.com/@presentazo">YouTube</a> · <a href="https://x.com/presentazo">X</a> · <a href="https://www.linkedin.com/company/presentazo/">LinkedIn</a></p>
 
@@ -78,7 +78,7 @@ Además de la extensión, Presentazo tiene una app para Windows y Mac. Sirve par
 
 Con la vista previa activada, la computadora envía al celular una **imagen reducida** (unos 480 px, ≈ 30 KB) de lo que se presenta: la extensión captura la pestaña controlada y la app de escritorio, la pantalla donde se presenta. Viaja cifrada de punto a punto, solo a tu celular, y no se guarda ni pasa por ningún servidor de Presentazo. Se puede desactivar en el celular (Ajustes) y en la computadora (Ajustes de la extensión o de la app).
 
-**«Lo que sigue» se aprende.** Un programa cualquiera no dice cuál es su siguiente diapositiva, así que Presentazo la descubre viendo qué aparece después de cada «Siguiente»: al recorrer la presentación una vez (por ejemplo, en un ensayo), la miniatura de la siguiente queda disponible. Mientras no se haya visto, el celular lo indica.
+**«Lo que sigue».** En **Presentaciones de Google** la extensión la lee del panel de miniaturas de la propia página y la envía desde la primera diapositiva, sin haberla visitado (todo ocurre dentro de la página: no se descarga nada de Google ni se pide un permiso nuevo). Con **cualquier otro programa** no hay forma de saberla de antemano, así que Presentazo la **aprende**: descubre cuál es viendo qué aparece después de cada «Siguiente», y tras recorrer la presentación una vez (por ejemplo, en un ensayo) la miniatura queda disponible. Mientras no se haya visto, el celular lo indica.
 
 En Mac, la app de escritorio necesita el permiso de **Grabación de pantalla** para la vista previa; el resto funciona sin él.
 
@@ -150,7 +150,7 @@ Para un `.crx` instalable fuera de la tienda: `./scripts/build.sh --crx` (la cla
 ### 4. Sube a la Chrome Web Store
 
 1. Entra al [Panel del desarrollador](https://chrome.google.com/webstore/devconsole) (registro único de USD 5).
-2. **Nuevo elemento** → sube el ZIP más reciente de `dist/` (hoy `dist/presentazo-1.1.0.zip`).
+2. **Nuevo elemento** → sube el ZIP más reciente de `dist/` (hoy `dist/presentazo-1.2.1.zip`).
 3. Completa las pestañas copiando los textos de [`store/LISTING.md`](store/LISTING.md) y sube las imágenes de `store/`.
 4. **Enviar para revisión.** Como la extensión pide acceso a todos los sitios, la revisión puede tardar algunos días; las justificaciones de permisos ya están redactadas en `LISTING.md`.
 
@@ -170,6 +170,7 @@ npm run test:e2e            # prueba completa con activeTab (instalación normal
 npm run test:e2e:todos      # la misma prueba con el acceso opcional a todos los sitios concedido
 npm run test:escritorio     # prueba de punta a punta de la app de escritorio
 npm run test:air            # modo aire: ejes, filtro y zona muerta con giros simulados
+npm run test:slides         # con una presentación REAL de Google Slides (necesita internet)
 npm run icons               # regenera íconos desde design/*.svg
 npm run store:capture       # capturas reales de la extensión
 npm run store:images        # compone las imágenes de la tienda

@@ -1,7 +1,7 @@
 {
   "name": "presentazo-escritorio",
   "productName": "Presentazo",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Presentazo para escritorio: controla PowerPoint, Keynote y cualquier presentación desde el celular.",
   "author": "Miguel Mogrovejo",

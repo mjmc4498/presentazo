@@ -579,6 +579,15 @@ const handlers = {
   },
   welcome: async () => ({ target: await targetInfo(), caps: capabilities(), levels: currentLevels() }),
   capture: () => capturePreview(),
+  // Diapositiva siguiente leída de la propia página (solo Presentaciones de Google).
+  lookahead: async () => {
+    const tabId = await targetTabId();
+    if (tabId == null) return null;
+    // Si la página se recargó, el script de contenido ya no está: se vuelve a inyectar (como con
+    // cualquier otra orden). Donde no hay acceso, sendToTab lo recuerda y no insiste.
+    const res = await sendToTab(tabId, { t: 'lookahead' });
+    return res?.cur ? res : null;
+  },
   cmd: (msg) => handleCommand(msg.cmd),
 
   // scripts de contenido
