@@ -10,6 +10,7 @@ on:
       - 'escritorio/**'
       - 'remote/**'
       - 'test/escritorio*.mjs'
+      - 'test/captura-electron.mjs'
       - '.github/workflows/escritorio.yml'
   workflow_dispatch:
 
@@ -42,6 +43,9 @@ jobs:
 
       - name: Teclado y mouse nativos
         run: node test/escritorio-nativo.mjs
+
+      - name: Captura real de la pantalla (vista previa)
+        run: node test/escritorio-captura.mjs
 
       - name: App completa (código fuente)
         run: node test/escritorio.mjs

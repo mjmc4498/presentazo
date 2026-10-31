@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { ID_PREFIX, PRIVACY_URL, REMOTE_URL, SITE_URL, SOCIAL, buildRemoteUrl } from '../ui/config.js';
 import { appName, describeApp } from './apps.js';
+import { captureDisplay, jpegOf } from './captura.js';
 import { createInput } from './input/index.js';
 import { createStore } from './settings.js';
 
@@ -588,23 +589,12 @@ async function handleCommand(cmd) {
 
 // ---------------------------------------------------------------- vista previa de la pantalla
 
-const PREVIEW_WIDTH = 480;
-const PREVIEW_MAX_BYTES = 42000;
 let testSlide = 1; // solo en las pruebas: número de diapositiva simulada
 
 // Estado del permiso de «Grabación de pantalla» (macOS). En Windows no hace falta.
 function screenAccess() {
   if (!isMac || TESTING) return 'granted';
   try { return systemPreferences.getMediaAccessStatus('screen'); } catch { return 'granted'; }
-}
-
-function jpegOf(image) {
-  let jpeg = null;
-  for (const quality of [62, 50, 40, 30]) {
-    jpeg = image.toJPEG(quality);
-    if (jpeg.length <= PREVIEW_MAX_BYTES) break;
-  }
-  return `data:image/jpeg;base64,${jpeg.toString('base64')}`;
 }
 
 // Imagen simulada para las pruebas: cada diapositiva tiene su color.
@@ -636,19 +626,7 @@ async function captureScreen() {
   // captura abriría el aviso de macOS en plena presentación y la dejaría esperando: ese aviso
   // solo sale cuando el usuario pulsa «Dar permiso» en el panel.
   if (screenAccess() !== 'granted') return { error: 'permission' };
-  try {
-    const display = pointerDisplay();
-    const { width, height } = display.size;
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: PREVIEW_WIDTH, height: Math.round((PREVIEW_WIDTH * height) / width) },
-    });
-    const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
-    if (!source || source.thumbnail.isEmpty()) return { error: 'fail' };
-    return { img: jpegOf(source.thumbnail), w: width, h: height };
-  } catch {
-    return { error: 'fail' };
-  }
+  return captureDisplay(pointerDisplay());
 }
 
 // ---------------------------------------------------------------- IPC: conexión

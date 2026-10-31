@@ -15,7 +15,8 @@
     "test:e2e": "node test/e2e.mjs",
     "test:e2e:todos": "MODE=todos-los-sitios node test/e2e.mjs",
     "test:escritorio": "node test/escritorio.mjs",
-    "test:air": "node test/air.test.mjs"
+    "test:air": "node test/air.test.mjs",
+    "test:captura": "node test/escritorio-captura.mjs"
   },
   "devDependencies": {
     "puppeteer": "^25.14.0"
